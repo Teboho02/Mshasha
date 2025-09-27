@@ -22,6 +22,17 @@
             cursor: none;
         }
 
+        /* Particle System Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #000511; /* Dark blue-black background */
+        }
+
         /* Custom Cursor */
         .camera-cursor {
             width: 40px;
@@ -60,14 +71,11 @@
             padding: 25px 60px;
             z-index: 1000;
             transition: all 0.4s var(--transition);
-            mix-blend-mode: difference;
+              backdrop-filter: blur(20px);
         }
 
         nav.scrolled {
-            background: rgba(10, 10, 10, 0.95);
-            backdrop-filter: blur(20px);
             padding: 15px 60px;
-            mix-blend-mode: normal;
         }
 
         .nav-container {
@@ -121,7 +129,7 @@
             width: 100%;
         }
 
-        /* Hero Section with Camera Animation */
+        /* Hero Section */
         .hero {
             height: 100vh;
             display: flex;
@@ -129,7 +137,6 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
-            background: radial-gradient(circle at center, rgba(78, 205, 196, 0.1) 0%, transparent 70%);
         }
 
         /* Animated Camera */
@@ -262,39 +269,6 @@
         @keyframes shutterPress {
             0%, 100% { transform: scale(1); }
             10%, 15% { transform: scale(0.9); }
-        }
-
-        /* Floating particles */
-        .particles {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: var(--secondary);
-            border-radius: 50%;
-            opacity: 0;
-            animation: floatUp 10s infinite;
-        }
-
-        @keyframes floatUp {
-            0% { 
-                opacity: 0;
-                transform: translateY(100vh) scale(0);
-            }
-            10% {
-                opacity: 1;
-                transform: translateY(80vh) scale(1);
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-100vh) scale(0);
-            }
         }
 
         /* Hero Content */
@@ -446,7 +420,7 @@
         /* Dynamic Stats Section */
         .stats-section {
             padding: 120px 60px;
-            background: linear-gradient(180deg, var(--dark) 0%, rgba(78, 205, 196, 0.05) 50%, var(--dark) 100%);
+            background: linear-gradient(180deg, rgba(10, 10, 10, 0.9) 0%, rgba(78, 205, 196, 0.05) 50%, rgba(10, 10, 10, 0.9) 100%);
             position: relative;
             overflow: hidden;
         }
@@ -467,6 +441,7 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 20px;
             transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
         }
 
         .stat-card:hover {
@@ -669,6 +644,7 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(10px);
         }
 
         .service-card::before {
@@ -860,3 +836,205 @@
                 padding: 30px;
             }
         }
+
+        #customers {
+            padding: 80px 20px;
+            min-height: 100vh;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            border-radius: 2px;
+        }
+
+        .customers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .customer-card {
+    background: rgba(194, 208, 218, 0.3); /* last value is opacity */
+            border-radius: 15px;
+            padding: 30px 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .customer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3498db, #2980b9, #e74c3c);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .customer-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .customer-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .customer-logo {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            /* White background for transparent images */
+            background-color: #ffffff;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .customer-card:hover .customer-logo {
+            transform: scale(1.05);
+        }
+
+        .customer-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 20px 0 15px 0;
+        }
+
+        .customer-testimonial {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #5a6c7d;
+            font-style: italic;
+            margin: 0;
+            position: relative;
+            padding: 0 20px;
+        }
+
+        .customer-testimonial::before {
+            content: '"';
+            font-size: 3rem;
+            color: #3498db;
+            position: absolute;
+            top: -10px;
+            left: -5px;
+            font-family: Georgia, serif;
+            opacity: 0.3;
+        }
+
+        .customer-testimonial::after {
+            content: '"';
+            font-size: 3rem;
+            color: #3498db;
+            position: absolute;
+            bottom: -35px;
+            right: -5px;
+            font-family: Georgia, serif;
+            opacity: 0.3;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            #customers {
+                padding: 60px 15px;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .customers-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 0 10px;
+            }
+
+            .customer-card {
+                padding: 25px 20px;
+            }
+
+            .customer-logo {
+                width: 100px;
+                height: 100px;
+                padding: 12px;
+            }
+
+            .customer-name {
+                font-size: 1.2rem;
+            }
+
+            .customer-testimonial {
+                font-size: 0.95rem;
+                padding: 0 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .section-title {
+                font-size: 1.8rem;
+            }
+            
+            .customer-card {
+                padding: 20px 15px;
+            }
+
+            .customer-logo {
+                width: 80px;
+                height: 80px;
+                padding: 10px;
+            }
+        }
+
+        /* Animation for cards on scroll */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .customer-card {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .customer-card:nth-child(1) { animation-delay: 0.1s; }
+        .customer-card:nth-child(2) { animation-delay: 0.2s; }
+        .customer-card:nth-child(3) { animation-delay: 0.3s; }
+        .customer-card:nth-child(4) { animation-delay: 0.4s; }
+        .customer-card:nth-child(5) { animation-delay: 0.5s; }
