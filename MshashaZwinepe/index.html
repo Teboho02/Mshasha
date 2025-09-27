@@ -84,6 +84,27 @@
       </div>
     </section>
 
+    <!-- Featured Video Section -->
+    <section class="video-section" style="padding: 80px 60px; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%);">
+      <div class="section-header">
+        <h2 class="section-title">Featured Video</h2>
+      </div>
+      <div style="max-width: 1200px; margin: 0 auto;">
+        <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+          <iframe 
+            src="https://www.youtube.com/embed/gEIzxwlfcAk" 
+            title="Featured Wedding Videography" 
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+          </iframe>
+        </div>
+        <p style="text-align: center; margin-top: 30px; font-size: 1.1rem; opacity: 0.8; max-width: 800px; margin-left: auto; margin-right: auto;">
+          Experience the magic of our cinematography. We don't just capture moments, we create cinematic stories that you'll treasure forever.
+        </p>
+      </div>
+    </section>
+
     <!-- Portfolio Preview -->
     <section class="portfolio-preview">
       <div class="section-header">
@@ -357,23 +378,35 @@
 
     // Page navigation
     function navigateTo(pageName) {
-      const pages = document.querySelectorAll('.page');
-      const navLinks = document.querySelectorAll('.nav-link');
+      // Only navigate between sections if we're on index.html
+      if (pageName === 'home' || pageName === 'portfolio' || pageName === 'about' || 
+          pageName === 'services' || pageName === 'customers' || pageName === 'contact') {
+        const pages = document.querySelectorAll('.page');
+        const navLinks = document.querySelectorAll('.nav-link');
 
-      pages.forEach(page => page.classList.remove('active'));
-      navLinks.forEach(link => link.classList.remove('active'));
+        pages.forEach(page => page.classList.remove('active'));
+        navLinks.forEach(link => link.classList.remove('active'));
 
-      document.getElementById(pageName).classList.add('active');
-      const activeLink = document.querySelector(`[data-page="${pageName}"]`);
-      if (activeLink) activeLink.classList.add('active');
+        const targetPage = document.getElementById(pageName);
+        if (targetPage) {
+          targetPage.classList.add('active');
+        }
+        
+        const activeLink = document.querySelector(`[data-page="${pageName}"]`);
+        if (activeLink) activeLink.classList.add('active');
 
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
 
     // Nav link clicks
     document.querySelectorAll('.nav-link').forEach(link => {
       link.addEventListener('click', (e) => {
-        navigateTo(e.target.dataset.page);
+        e.preventDefault();
+        const pageName = e.target.dataset.page;
+        if (pageName) {
+          navigateTo(pageName);
+        }
       });
     });
 
@@ -471,6 +504,7 @@
       portfolioItems.forEach(item => {
         const portfolioItem = document.createElement('div');
         portfolioItem.className = 'portfolio-item';
+        portfolioItem.style.cursor = 'pointer';
         
         // Determine the gallery type based on category
         const galleryType = item.galleryType || item.category.toLowerCase().replace(/s$/, '');
@@ -478,8 +512,7 @@
         portfolioItem.innerHTML = `
           <img 
             src="${item.image}" 
-            alt="${item.title}" 
-            style="cursor:pointer;" 
+            alt="${item.title}"
           />
           <div class="portfolio-overlay">
             <div class="portfolio-category">${item.category}</div>
@@ -489,7 +522,9 @@
         `;
         
         // Add click event to navigate to portfolio-gallery.html with the correct type
-        portfolioItem.addEventListener('click', () => {
+        portfolioItem.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           window.location.href = `portfolio-gallery.html?type=${galleryType}`;
         });
         

@@ -1,0 +1,17 @@
+{
+  "name": "mshashabackend",
+  "version": "1.0.0",
+  "description": "Mshasha Zwinepe backend. Allows Mshasha to upload videos and pictures from his side. ",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Teboho02",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "firebase": "^12.3.0"
+  }
+}

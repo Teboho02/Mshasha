@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Mshasha Zwinepe Photography</title>
+    <style>
+        /* Your existing CSS styles remain the same */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #ff6b6b;
+            --secondary: #4ecdc4;
+            --tertiary: #45b7d1;
+            --dark: #0a0a0a;
+            --light: #ffffff;
+            --gray: #666;
+            --transition: cubic-bezier(0.43, 0.13, 0.23, 0.96);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            min-height: 100vh;
+            cursor: none;
+        }
+
+        /* Custom cursor */
+        .camera-cursor {
+            width: 40px;
+            height: 40px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 10000;
+            transition: transform 0.1s ease;
+            mix-blend-mode: difference;
+        }
+
+        .camera-cursor svg {
+            width: 100%;
+            height: 100%;
+            transform: translate(-50%, -50%);
+        }
+
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10001;
+            transition: transform 0.15s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 60px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 100;
+            letter-spacing: 5px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            position: relative;
+            display: inline-block;
+        }
+
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+
+        .header p {
+            opacity: 0.7;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 40px;
+        }
+
+        .admin-nav {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 60px;
+            flex-wrap: wrap;
+        }
+
+        .nav-button {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--light);
+            padding: 18px 50px;
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: none;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .nav-button:hover::before,
+        .nav-button.active::before {
+            left: 0;
+        }
+
+        .nav-button.active {
+            color: var(--dark);
+        }
+
+        .section {
+            display: none;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 50px 40px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .section.active::before {
+            transform: translateX(0);
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 100;
+            letter-spacing: 3px;
+            margin-bottom: 40px;
+            color: var(--secondary);
+            text-transform: uppercase;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 15px;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--secondary);
+        }
+
+        .form-input, .form-select, .form-textarea {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--light);
+            padding: 15px 0;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-bottom-color: var(--secondary);
+        }
+
+        .form-input::placeholder, .form-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 1px;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: none;
+        }
+
+        .file-upload-label {
+            display: block;
+            background: transparent;
+            border: 1px solid var(--secondary);
+            color: var(--light);
+            padding: 18px 30px;
+            text-align: center;
+            cursor: none;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-upload-label::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--secondary);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .file-upload-label:hover::before {
+            left: 0;
+        }
+
+        .file-upload-label:hover {
+            color: var(--dark);
+        }
+
+        .btn-primary {
+            background: transparent;
+            border: 1px solid var(--tertiary);
+            color: var(--light);
+            padding: 18px 50px;
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: none;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--tertiary);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .btn-primary:hover::before {
+            left: 0;
+        }
+
+        .btn-primary:hover {
+            color: var(--dark);
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .gallery-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .gallery-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover::before {
+            transform: translateX(0);
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            margin-bottom: 15px;
+            filter: grayscale(100%);
+            transition: filter 0.5s ease;
+        }
+
+        .gallery-item:hover img {
+            filter: grayscale(0%);
+        }
+
+        .gallery-item h4 {
+            color: var(--secondary);
+            margin-bottom: 10px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .gallery-item p {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .btn-delete {
+            background: transparent;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 10px 20px;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: none;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-delete::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: #e74c3c;
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .btn-delete:hover::before {
+            left: 0;
+        }
+
+        .btn-delete:hover {
+            color: var(--light);
+        }
+
+        .video-preview {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            margin-top: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .video-preview h4 {
+            color: var(--secondary);
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .alert {
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            border: 1px solid;
+            backdrop-filter: blur(10px);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: rgba(78, 205, 196, 0.1);
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        .alert-error {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            transform: translateX(0);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 100;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        /* Category Management Styles */
+        .category-management {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .category-item:last-child {
+            border-bottom: none;
+        }
+
+        .category-name {
+            font-size: 16px;
+            letter-spacing: 1px;
+            text-transform: capitalize;
+        }
+
+        .btn-small {
+            background: transparent;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 8px 15px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: none;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-small::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: #e74c3c;
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .btn-small:hover::before {
+            left: 0;
+        }
+
+        .btn-small:hover {
+            color: var(--light);
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .admin-nav {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .nav-button {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .header h1 {
+                font-size: 2.5rem;
+                letter-spacing: 3px;
+            }
+
+            .section {
+                padding: 30px 20px;
+            }
+
+            .stats-overview {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid var(--secondary);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Camera Cursor -->
+    <div class="camera-cursor">
+        <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="20" cy="20" r="18" />
+            <circle cx="20" cy="20" r="12" />
+            <circle cx="20" cy="20" r="6" />
+            <line x1="20" y1="2" x2="20" y2="8" />
+            <line x1="20" y1="32" x2="20" y2="38" />
+            <line x1="2" y1="20" x2="8" y2="20" />
+            <line x1="32" y1="20" x2="38" y2="20" />
+        </svg>
+    </div>
+    <div class="cursor-dot"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Admin Panel</h1>
+            <p>Content Management System for Mshasha Zwinepe Photography</p>
+        </div>
+
+        <div class="admin-nav">
+            <button class="nav-button active" onclick="showSection('overview')">Overview</button>
+            <button class="nav-button" onclick="showSection('categories')">Categories</button>
+            <button class="nav-button" onclick="showSection('portfolio')">Portfolio Management</button>
+            <button class="nav-button" onclick="showSection('featured-video')">Featured Video</button>
+            <button class="nav-button" onclick="showSection('home-portfolio')">Home Portfolio Items</button>
+        </div>
+
+        <!-- Overview Section -->
+        <div id="overview" class="section active">
+            <h2 class="section-title">Dashboard Overview</h2>
+            <div class="stats-overview" id="statsOverview">
+                <!-- Stats will be dynamically populated -->
+            </div>
+        </div>
+
+        <!-- Categories Management Section -->
+        <div id="categories" class="section">
+            <h2 class="section-title">Category Management</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="newCategoryName">New Category Name</label>
+                    <input type="text" id="newCategoryName" class="form-input" placeholder="Enter category name">
+                </div>
+                <div class="form-group">
+                    <label for="newCategoryDescription">Category Description</label>
+                    <input type="text" id="newCategoryDescription" class="form-input" placeholder="Enter category description">
+                </div>
+            </div>
+            
+            <button class="btn-primary" onclick="addCategory()" id="addCategoryBtn">Add Category</button>
+            
+            <div class="category-management">
+                <h3 style="color: var(--secondary); margin-bottom: 20px; font-weight: 300; letter-spacing: 2px; text-transform: uppercase;">Existing Categories</h3>
+                <div id="categoriesList">
+                    <!-- Categories will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Management Section -->
+        <div id="portfolio" class="section">
+            <h2 class="section-title">Portfolio Gallery Management</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="photoCategory">Category</label>
+                    <select id="photoCategory" class="form-select">
+                        <!-- Categories will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="photoTitle">Photo Title</label>
+                    <input type="text" id="photoTitle" class="form-input" placeholder="Enter photo title">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="photoDescription">Description</label>
+                <textarea id="photoDescription" class="form-textarea" placeholder="Enter photo description"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="photoFile">Upload Photo</label>
+                <div class="file-upload">
+                    <input type="file" id="photoFile" accept="image/*" multiple>
+                    <label for="photoFile" class="file-upload-label">Choose Photos</label>
+                </div>
+            </div>
+            
+            <button class="btn-primary" onclick="addPhoto()" id="addPhotoBtn">Add to Portfolio</button>
+            
+            <div id="portfolioGallery" class="gallery-grid">
+                <!-- Portfolio items will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Featured Video Section -->
+        <div id="featured-video" class="section">
+            <h2 class="section-title">Featured Video Management</h2>
+            
+            <div class="form-group">
+                <label for="videoTitle">Video Title</label>
+                <input type="text" id="videoTitle" class="form-input" placeholder="Enter video title">
+            </div>
+            
+            <div class="form-group">
+                <label for="videoUrl">YouTube Video URL</label>
+                <input type="url" id="videoUrl" class="form-input" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            
+            <div class="form-group">
+                <label for="videoDescription">Video Description</label>
+                <textarea id="videoDescription" class="form-textarea" placeholder="Enter video description"></textarea>
+            </div>
+            
+            <button class="btn-primary" onclick="updateFeaturedVideo()" id="updateVideoBtn">Update Featured Video</button>
+            
+            <div class="video-preview">
+                <h4>Current Featured Video</h4>
+                <div class="video-container" id="currentVideoPreview">
+                    <!-- Video iframe will be populated here -->
+                </div>
+                <p id="currentVideoDescription"></p>
+            </div>
+        </div>
+
+        <!-- Home Portfolio Items Section -->
+        <div id="home-portfolio" class="section">
+            <h2 class="section-title">Home Page Portfolio Items</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="homeCategory">Category</label>
+                    <select id="homeCategory" class="form-select">
+                        <!-- Categories will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="homeTitle">Title</label>
+                    <input type="text" id="homeTitle" class="form-input" placeholder="Enter title">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="homeDescription">Description</label>
+                <input type="text" id="homeDescription" class="form-input" placeholder="Enter description">
+            </div>
+            
+            <div class="form-group">
+                <label for="homeImageUrl">Image URL</label>
+                <input type="url" id="homeImageUrl" class="form-input" placeholder="https://images.unsplash.com/...">
+            </div>
+            
+            <button class="btn-primary" onclick="addHomePortfolioItem()" id="addHomeItemBtn">Add Home Portfolio Item</button>
+            
+            <div id="homePortfolioGallery" class="gallery-grid">
+                <!-- Home portfolio items will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:3000';
+
+        // Custom cursor functionality
+        const cursor = document.querySelector('.camera-cursor');
+        const cursorDot = document.querySelector('.cursor-dot');
+
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+            cursorDot.style.left = (e.clientX - 4) + 'px';
+            cursorDot.style.top = (e.clientY - 4) + 'px';
+        });
+
+        // Add hover effect to clickable elements
+        document.querySelectorAll('button, input, select, textarea, .file-upload-label').forEach(elem => {
+            elem.addEventListener('mouseenter', () => {
+                cursor.style.transform = 'scale(1.5)';
+                cursorDot.style.transform = 'scale(2)';
+            });
+            elem.addEventListener('mouseleave', () => {
+                cursor.style.transform = 'scale(1)';
+                cursorDot.style.transform = 'scale(1)';
+            });
+        });
+
+        // API Helper Functions
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                }
+
+                return data;
+            } catch (error) {
+                console.error('API call failed:', error);
+                throw error;
+            }
+        }
+
+        function setLoading(button, isLoading) {
+            if (isLoading) {
+                button.classList.add('loading');
+                button.disabled = true;
+                button.innerHTML = `<span class="spinner"></span>${button.textContent}`;
+            } else {
+                button.classList.remove('loading');
+                button.disabled = false;
+                button.innerHTML = button.textContent.replace('<span class="spinner"></span>', '');
+            }
+        }
+
+        // Navigation
+        function showSection(sectionName) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            document.getElementById(sectionName).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (sectionName === 'overview') {
+                updateStats();
+            } else if (sectionName === 'categories') {
+                loadCategories();
+            } else if (sectionName === 'portfolio') {
+                loadPortfolioItems();
+            } else if (sectionName === 'featured-video') {
+                loadFeaturedVideo();
+            } else if (sectionName === 'home-portfolio') {
+                loadHomePortfolioItems();
+            }
+        }
+
+        // Category Management
+        async function addCategory() {
+            const name = document.getElementById('newCategoryName').value.trim();
+            const description = document.getElementById('newCategoryDescription').value.trim();
+            const button = document.getElementById('addCategoryBtn');
+            
+            if (!name || !description) {
+                showAlert('Please fill in both category name and description.', 'error');
+                return;
+            }
+            
+            try {
+                setLoading(button, true);
+                
+                const response = await apiCall('/api/categories', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, description })
+                });
+                
+                document.getElementById('newCategoryName').value = '';
+                document.getElementById('newCategoryDescription').value = '';
+                
+                await loadCategories();
+                await updateCategorySelects();
+                await updateStats();
+                showAlert('Category added successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to add category', 'error');
+            } finally {
+                setLoading(button, false);
+            }
+        }
+
+        async function deleteCategory(categoryId) {
+            if (!confirm(`Are you sure you want to delete this category? This will also delete all photos in this category.`)) {
+                return;
+            }
+            
+            try {
+                await apiCall(`/api/categories/${categoryId}`, {
+                    method: 'DELETE'
+                });
+                
+                await loadCategories();
+                await updateCategorySelects();
+                await loadPortfolioItems();
+                await updateStats();
+                showAlert('Category deleted successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to delete category', 'error');
+            }
+        }
+
+        async function loadCategories() {
+            try {
+                const response = await apiCall('/api/categories');
+                renderCategoriesList(response.data);
+            } catch (error) {
+                showAlert('Failed to load categories', 'error');
+            }
+        }
+
+        function renderCategoriesList(categories) {
+            const categoriesList = document.getElementById('categoriesList');
+            categoriesList.innerHTML = '';
+            
+            if (!categories || Object.keys(categories).length === 0) {
+                categoriesList.innerHTML = '<p style="opacity: 0.7; text-align: center;">No categories found</p>';
+                return;
+            }
+            
+            Object.keys(categories).forEach(categoryKey => {
+                const category = categories[categoryKey];
+                const categoryItem = document.createElement('div');
+                categoryItem.className = 'category-item';
+                categoryItem.innerHTML = `
+                    <div>
+                        <div class="category-name">${category.name}</div>
+                        <div style="font-size: 12px; opacity: 0.7;">${category.description}</div>
+                    </div>
+                    <button class="btn-small" onclick="deleteCategory('${categoryKey}')">Delete</button>
+                `;
+                categoriesList.appendChild(categoryItem);
+            });
+        }
+
+        async function updateCategorySelects() {
+            try {
+                const response = await apiCall('/api/categories');
+                const categories = response.data;
+                
+                const photoCategorySelect = document.getElementById('photoCategory');
+                const homeCategorySelect = document.getElementById('homeCategory');
+                
+                photoCategorySelect.innerHTML = '';
+                homeCategorySelect.innerHTML = '';
+                
+                Object.keys(categories).forEach(categoryKey => {
+                    const category = categories[categoryKey];
+                    const option = document.createElement('option');
+                    option.value = categoryKey;
+                    option.textContent = category.name;
+                    photoCategorySelect.appendChild(option);
+                    
+                    const homeOption = document.createElement('option');
+                    homeOption.value = category.name;
+                    homeOption.textContent = category.name;
+                    homeCategorySelect.appendChild(homeOption);
+                });
+            } catch (error) {
+                console.error('Failed to load categories for selects:', error);
+            }
+        }
+
+        // Portfolio Management
+        async function addPhoto() {
+            const categoryId = document.getElementById('photoCategory').value;
+            const title = document.getElementById('photoTitle').value.trim();
+            const description = document.getElementById('photoDescription').value.trim();
+            const fileInput = document.getElementById('photoFile');
+            const button = document.getElementById('addPhotoBtn');
+            
+            if (!categoryId || !title || !description || fileInput.files.length === 0) {
+                showAlert('Please fill in all fields and select at least one photo.', 'error');
+                return;
+            }
+            
+            try {
+                setLoading(button, true);
+                
+                // Convert images to base64
+                const imagePromises = Array.from(fileInput.files).map(file => {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.readAsDataURL(file);
+                    });
+                });
+                
+                const images = await Promise.all(imagePromises);
+                
+                const response = await apiCall('/api/portfolio', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        categoryId,
+                        title,
+                        description,
+                        images
+                    })
+                });
+                
+                // Reset form
+                document.getElementById('photoTitle').value = '';
+                document.getElementById('photoDescription').value = '';
+                fileInput.value = '';
+                
+                await loadPortfolioItems();
+                await updateStats();
+                showAlert('Photo(s) added successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to add photo(s)', 'error');
+            } finally {
+                setLoading(button, false);
+            }
+        }
+
+        async function deletePortfolioItem(itemId) {
+            if (!confirm('Are you sure you want to delete this portfolio item?')) {
+                return;
+            }
+            
+            try {
+                await apiCall(`/api/portfolio/${itemId}`, {
+                    method: 'DELETE'
+                });
+                
+                await loadPortfolioItems();
+                await updateStats();
+                showAlert('Portfolio item deleted successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to delete portfolio item', 'error');
+            }
+        }
+
+        async function loadPortfolioItems() {
+            try {
+                const response = await apiCall('/api/portfolio');
+                renderPortfolioGallery(response.data);
+            } catch (error) {
+                showAlert('Failed to load portfolio items', 'error');
+            }
+        }
+
+        function renderPortfolioGallery(portfolioItems) {
+            const portfolioGallery = document.getElementById('portfolioGallery');
+            portfolioGallery.innerHTML = '';
+            
+            if (!portfolioItems || portfolioItems.length === 0) {
+                portfolioGallery.innerHTML = '<p style="opacity: 0.7; text-align: center; grid-column: 1 / -1;">No portfolio items found</p>';
+                return;
+            }
+            
+            portfolioItems.forEach((item, index) => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                galleryItem.innerHTML = `
+                    ${item.images && item.images.length > 0 ? 
+                        `<img src="${item.images[0]}" alt="${item.title}" style="width: 100%; height: 200px; object-fit: cover;">` : 
+                        '<div style="width: 100%; height: 200px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5);">No Image</div>'
+                    }
+                    <h4>${item.title}</h4>
+                    <p>${item.description}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 10px; opacity: 0.7;">${item.categoryName} • ${new Date(item.createdAt).toLocaleDateString()}</span>
+                        <button class="btn-delete" onclick="deletePortfolioItem('${item.id}')">Delete</button>
+                    </div>
+                `;
+                portfolioGallery.appendChild(galleryItem);
+            });
+        }
+
+        // Featured Video Management
+        async function updateFeaturedVideo() {
+            const title = document.getElementById('videoTitle').value.trim();
+            const url = document.getElementById('videoUrl').value.trim();
+            const description = document.getElementById('videoDescription').value.trim();
+            const button = document.getElementById('updateVideoBtn');
+            
+            if (!title || !url || !description) {
+                showAlert('Please fill in all fields.', 'error');
+                return;
+            }
+            
+            try {
+                setLoading(button, true);
+                
+                const response = await apiCall('/api/featured-video', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        title,
+                        url,
+                        description
+                    })
+                });
+                
+                await loadFeaturedVideo();
+                showAlert('Featured video updated successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to update featured video', 'error');
+            } finally {
+                setLoading(button, false);
+            }
+        }
+
+        async function loadFeaturedVideo() {
+            try {
+                const response = await apiCall('/api/featured-video');
+                const video = response.data;
+                
+                document.getElementById('videoTitle').value = video.title || '';
+                document.getElementById('videoUrl').value = video.url || '';
+                document.getElementById('videoDescription').value = video.description || '';
+                
+                const preview = document.getElementById('currentVideoPreview');
+                if (video.url) {
+                    preview.innerHTML = `<iframe src="${video.url}" allowfullscreen></iframe>`;
+                } else {
+                    preview.innerHTML = '<p style="text-align: center; opacity: 0.7;">No featured video set</p>';
+                }
+                
+                document.getElementById('currentVideoDescription').textContent = video.description || '';
+            } catch (error) {
+                console.error('Failed to load featured video:', error);
+            }
+        }
+
+        // Home Portfolio Management
+        async function addHomePortfolioItem() {
+            const category = document.getElementById('homeCategory').value;
+            const title = document.getElementById('homeTitle').value.trim();
+            const description = document.getElementById('homeDescription').value.trim();
+            const imageUrl = document.getElementById('homeImageUrl').value.trim();
+            const button = document.getElementById('addHomeItemBtn');
+            
+            if (!category || !title || !description || !imageUrl) {
+                showAlert('Please fill in all fields.', 'error');
+                return;
+            }
+            
+            try {
+                setLoading(button, true);
+                
+                const response = await apiCall('/api/home-portfolio', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        category,
+                        title,
+                        description,
+                        image: imageUrl,
+                        galleryType: category.toLowerCase()
+                    })
+                });
+                
+                // Reset form
+                document.getElementById('homeTitle').value = '';
+                document.getElementById('homeDescription').value = '';
+                document.getElementById('homeImageUrl').value = '';
+                
+                await loadHomePortfolioItems();
+                await updateStats();
+                showAlert('Home portfolio item added successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to add home portfolio item', 'error');
+            } finally {
+                setLoading(button, false);
+            }
+        }
+
+        async function deleteHomePortfolioItem(itemId) {
+            if (!confirm('Are you sure you want to delete this home portfolio item?')) {
+                return;
+            }
+            
+            try {
+                await apiCall(`/api/home-portfolio/${itemId}`, {
+                    method: 'DELETE'
+                });
+                
+                await loadHomePortfolioItems();
+                await updateStats();
+                showAlert('Home portfolio item deleted successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to delete home portfolio item', 'error');
+            }
+        }
+
+        async function loadHomePortfolioItems() {
+            try {
+                const response = await apiCall('/api/home-portfolio');
+                renderHomePortfolioGallery(response.data);
+            } catch (error) {
+                showAlert('Failed to load home portfolio items', 'error');
+            }
+        }
+
+        function renderHomePortfolioGallery(homePortfolioItems) {
+            const homePortfolioGallery = document.getElementById('homePortfolioGallery');
+            homePortfolioGallery.innerHTML = '';
+            
+            if (!homePortfolioItems || homePortfolioItems.length === 0) {
+                homePortfolioGallery.innerHTML = '<p style="opacity: 0.7; text-align: center; grid-column: 1 / -1;">No home portfolio items found</p>';
+                return;
+            }
+            
+            homePortfolioItems.forEach((item, index) => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                galleryItem.innerHTML = `
+                    <img src="${item.image}" alt="${item.title}" style="width: 100%; height: 200px; object-fit: cover;">
+                    <h4>${item.title}</h4>
+                    <p>${item.description}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 10px; opacity: 0.7;">${item.category}</span>
+                        <button class="btn-delete" onclick="deleteHomePortfolioItem('${item.id}')">Delete</button>
+                    </div>
+                `;
+                homePortfolioGallery.appendChild(galleryItem);
+            });
+        }
+
+        // Stats Overview
+        async function updateStats() {
+            try {
+                const response = await apiCall('/api/stats');
+                const stats = response.data;
+                
+                const statsOverview = document.getElementById('statsOverview');
+                statsOverview.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.categories || 0}</div>
+                        <div class="stat-label">Categories</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.portfolioItems || 0}</div>
+                        <div class="stat-label">Portfolio Photos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.homePortfolioItems || 0}</div>
+                        <div class="stat-label">Home Portfolio Items</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.featuredVideos || 0}</div>
+                        <div class="stat-label">Featured Video</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Alert System
+        function showAlert(message, type) {
+            // Remove existing alerts
+            document.querySelectorAll('.alert').forEach(alert => alert.remove());
+            
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            // Insert after the section title
+            const activeSection = document.querySelector('.section.active');
+            const sectionTitle = activeSection.querySelector('.section-title');
+            activeSection.insertBefore(alert, sectionTitle.nextSibling);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 5000);
+        }
+
+        // Initialize the application
+        async function init() {
+            try {
+                // Test API connection
+                await apiCall('/');
+                
+                // Load initial data
+                await Promise.all([
+                    updateCategorySelects(),
+                    loadCategories(),
+                    loadPortfolioItems(),
+                    loadFeaturedVideo(),
+                    loadHomePortfolioItems(),
+                    updateStats()
+                ]);
+                
+                showAlert('Admin panel connected successfully!', 'success');
+            } catch (error) {
+                showAlert('Failed to connect to API. Please ensure the server is running on localhost:3000', 'error');
+                console.error('Initialization error:', error);
+            }
+        }
+
+        // Start the application when the page loads
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
