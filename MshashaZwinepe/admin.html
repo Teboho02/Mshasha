@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Mshasha Zwinepe Photography</title>
-<link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="admin.css">
+    <!-- Include Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 
@@ -96,10 +99,17 @@
                 <div class="file-upload">
                     <input type="file" id="photoFile" accept="image/*" multiple>
                     <label for="photoFile" class="file-upload-label">Choose Photos</label>
+                    <div id="filePreview" class="file-preview"></div>
+                </div>
+                <div id="uploadProgress" class="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span id="progressText">0%</span>
                 </div>
             </div>
             
-            <button class="btn-primary" onclick="addPhoto()" id="addPhotoBtn">Add to Portfolio</button>
+            <button class="btn-primary" onclick="uploadPhotos()" id="uploadBtn">Upload to Portfolio</button>
             
             <div id="portfolioGallery" class="gallery-grid">
                 <!-- Portfolio items will be displayed here -->
@@ -159,8 +169,12 @@
             </div>
             
             <div class="form-group">
-                <label for="homeImageUrl">Image URL</label>
-                <input type="url" id="homeImageUrl" class="form-input" placeholder="https://images.unsplash.com/...">
+                <label for="homeImageFile">Upload Image</label>
+                <div class="file-upload">
+                    <input type="file" id="homeImageFile" accept="image/*">
+                    <label for="homeImageFile" class="file-upload-label">Choose Image</label>
+                    <div id="homeImagePreview" class="file-preview"></div>
+                </div>
             </div>
             
             <button class="btn-primary" onclick="addHomePortfolioItem()" id="addHomeItemBtn">Add Home Portfolio Item</button>
@@ -172,8 +186,22 @@
     </div>
 
     <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBRq8lvXWDQLpdeXL3oz59TBx38LvUPGRk",
+            authDomain: "mshashazwinepe-8489d.firebaseapp.com",
+            projectId: "mshashazwinepe-8489d",
+            storageBucket: "mshashazwinepe-8489d.firebasestorage.app",
+            messagingSenderId: "1020679564289",
+            appId: "1:1020679564289:web:93a9c669415deeaf42a400"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const storage = firebase.storage();
+
         // API Configuration
-        const API_BASE_URL = '';
+        const API_BASE_URL = 'http://localhost:3000';
 
         // Custom cursor functionality
         const cursor = document.querySelector('.camera-cursor');
@@ -231,6 +259,95 @@
                 button.classList.remove('loading');
                 button.disabled = false;
                 button.innerHTML = button.textContent.replace('<span class="spinner"></span>', '');
+            }
+        }
+
+        // File Preview and Upload Functions
+        function setupFilePreview(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            
+            input.addEventListener('change', function(e) {
+                preview.innerHTML = '';
+                const files = Array.from(this.files);
+                
+                files.forEach(file => {
+                    if (!file.type.startsWith('image/')) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'preview-item';
+                        previewItem.innerHTML = `
+                            <img src="${e.target.result}" alt="${file.name}">
+                            <span>${file.name}</span>
+                            <span class="file-size">(${formatFileSize(file.size)})</span>
+                        `;
+                        preview.appendChild(previewItem);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Firebase Storage Upload Function
+        async function uploadToFirebase(file, folder = 'portfolio') {
+            return new Promise((resolve, reject) => {
+                const timestamp = Date.now();
+                const randomString = Math.random().toString(36).substring(2, 15);
+                const fileExtension = file.name.split('.').pop();
+                const filename = `${folder}/${timestamp}_${randomString}.${fileExtension}`;
+                
+                const storageRef = storage.ref().child(filename);
+                const uploadTask = storageRef.put(file);
+
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        // Progress monitoring
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        updateUploadProgress(progress);
+                    },
+                    (error) => {
+                        reject(error);
+                    },
+                    async () => {
+                        // Upload completed successfully
+                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        resolve({
+                            url: downloadURL,
+                            filename: filename,
+                            originalName: file.name,
+                            size: file.size,
+                            contentType: file.type
+                        });
+                    }
+                );
+            });
+        }
+
+        function updateUploadProgress(progress) {
+            const progressBar = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressContainer = document.getElementById('uploadProgress');
+            
+            if (progressBar && progressText) {
+                progressBar.style.width = progress + '%';
+                progressText.textContent = Math.round(progress) + '%';
+                progressContainer.style.display = 'block';
+                
+                if (progress >= 100) {
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                    }, 1000);
+                }
             }
         }
 
@@ -373,13 +490,13 @@
             }
         }
 
-        // Portfolio Management
-        async function addPhoto() {
+        // Portfolio Management - UPDATED FOR FIREBASE STORAGE
+        async function uploadPhotos() {
             const categoryId = document.getElementById('photoCategory').value;
             const title = document.getElementById('photoTitle').value.trim();
             const description = document.getElementById('photoDescription').value.trim();
             const fileInput = document.getElementById('photoFile');
-            const button = document.getElementById('addPhotoBtn');
+            const button = document.getElementById('uploadBtn');
             
             if (!categoryId || !title || !description || fileInput.files.length === 0) {
                 showAlert('Please fill in all fields and select at least one photo.', 'error');
@@ -388,25 +505,23 @@
             
             try {
                 setLoading(button, true);
+                updateUploadProgress(0);
                 
-                // Convert images to base64
-                const imagePromises = Array.from(fileInput.files).map(file => {
-                    return new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = (e) => resolve(e.target.result);
-                        reader.readAsDataURL(file);
-                    });
-                });
+                // Upload each file to Firebase Storage
+                const files = Array.from(fileInput.files);
+                const uploadPromises = files.map(file => uploadToFirebase(file, 'portfolio'));
                 
-                const images = await Promise.all(imagePromises);
+                const uploadResults = await Promise.all(uploadPromises);
+                const imageUrls = uploadResults.map(result => result.url);
                 
+                // Create portfolio item with the Firebase Storage URLs
                 const response = await apiCall('/api/portfolio', {
                     method: 'POST',
                     body: JSON.stringify({
                         categoryId,
                         title,
                         description,
-                        images
+                        images: imageUrls
                     })
                 });
                 
@@ -414,12 +529,15 @@
                 document.getElementById('photoTitle').value = '';
                 document.getElementById('photoDescription').value = '';
                 fileInput.value = '';
+                document.getElementById('filePreview').innerHTML = '';
+                updateUploadProgress(100);
                 
                 await loadPortfolioItems();
                 await updateStats();
-                showAlert('Photo(s) added successfully!', 'success');
+                showAlert('Photo(s) uploaded successfully to Firebase Storage!', 'success');
             } catch (error) {
-                showAlert(error.message || 'Failed to add photo(s)', 'error');
+                console.error('Upload error:', error);
+                showAlert(error.message || 'Failed to upload photo(s)', 'error');
             } finally {
                 setLoading(button, false);
             }
@@ -480,84 +598,34 @@
             });
         }
 
-        // Featured Video Management
-        async function updateFeaturedVideo() {
-            const title = document.getElementById('videoTitle').value.trim();
-            const url = document.getElementById('videoUrl').value.trim();
-            const description = document.getElementById('videoDescription').value.trim();
-            const button = document.getElementById('updateVideoBtn');
-            
-            if (!title || !url || !description) {
-                showAlert('Please fill in all fields.', 'error');
-                return;
-            }
-            
-            try {
-                setLoading(button, true);
-                
-                const response = await apiCall('/api/featured-video', {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        title,
-                        url,
-                        description
-                    })
-                });
-                
-                await loadFeaturedVideo();
-                showAlert('Featured video updated successfully!', 'success');
-            } catch (error) {
-                showAlert(error.message || 'Failed to update featured video', 'error');
-            } finally {
-                setLoading(button, false);
-            }
-        }
-
-        async function loadFeaturedVideo() {
-            try {
-                const response = await apiCall('/api/featured-video');
-                const video = response.data;
-                
-                document.getElementById('videoTitle').value = video.title || '';
-                document.getElementById('videoUrl').value = video.url || '';
-                document.getElementById('videoDescription').value = video.description || '';
-                
-                const preview = document.getElementById('currentVideoPreview');
-                if (video.url) {
-                    preview.innerHTML = `<iframe src="${video.url}" allowfullscreen></iframe>`;
-                } else {
-                    preview.innerHTML = '<p style="text-align: center; opacity: 0.7;">No featured video set</p>';
-                }
-                
-                document.getElementById('currentVideoDescription').textContent = video.description || '';
-            } catch (error) {
-                console.error('Failed to load featured video:', error);
-            }
-        }
-
-        // Home Portfolio Management
+        // Home Portfolio Management - UPDATED FOR FIREBASE STORAGE
         async function addHomePortfolioItem() {
             const category = document.getElementById('homeCategory').value;
             const title = document.getElementById('homeTitle').value.trim();
             const description = document.getElementById('homeDescription').value.trim();
-            const imageUrl = document.getElementById('homeImageUrl').value.trim();
+            const fileInput = document.getElementById('homeImageFile');
             const button = document.getElementById('addHomeItemBtn');
             
-            if (!category || !title || !description || !imageUrl) {
-                showAlert('Please fill in all fields.', 'error');
+            if (!category || !title || !description || fileInput.files.length === 0) {
+                showAlert('Please fill in all fields and select an image.', 'error');
                 return;
             }
             
             try {
                 setLoading(button, true);
                 
+                // Upload image to Firebase Storage
+                const file = fileInput.files[0];
+                const uploadResult = await uploadToFirebase(file, 'home-portfolio');
+                
+                // Create home portfolio item with Firebase Storage URL
                 const response = await apiCall('/api/home-portfolio', {
                     method: 'POST',
                     body: JSON.stringify({
                         category,
                         title,
                         description,
-                        image: imageUrl,
+                        image: uploadResult.url,
                         galleryType: category.toLowerCase()
                     })
                 });
@@ -565,11 +633,12 @@
                 // Reset form
                 document.getElementById('homeTitle').value = '';
                 document.getElementById('homeDescription').value = '';
-                document.getElementById('homeImageUrl').value = '';
+                fileInput.value = '';
+                document.getElementById('homeImagePreview').innerHTML = '';
                 
                 await loadHomePortfolioItems();
                 await updateStats();
-                showAlert('Home portfolio item added successfully!', 'success');
+                showAlert('Home portfolio item added successfully with Firebase Storage!', 'success');
             } catch (error) {
                 showAlert(error.message || 'Failed to add home portfolio item', 'error');
             } finally {
@@ -629,6 +698,61 @@
             });
         }
 
+        // Featured Video Management (unchanged)
+        async function updateFeaturedVideo() {
+            const title = document.getElementById('videoTitle').value.trim();
+            const url = document.getElementById('videoUrl').value.trim();
+            const description = document.getElementById('videoDescription').value.trim();
+            const button = document.getElementById('updateVideoBtn');
+            
+            if (!title || !url || !description) {
+                showAlert('Please fill in all fields.', 'error');
+                return;
+            }
+            
+            try {
+                setLoading(button, true);
+                
+                const response = await apiCall('/api/featured-video', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        title,
+                        url,
+                        description
+                    })
+                });
+                
+                await loadFeaturedVideo();
+                showAlert('Featured video updated successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to update featured video', 'error');
+            } finally {
+                setLoading(button, false);
+            }
+        }
+
+        async function loadFeaturedVideo() {
+            try {
+                const response = await apiCall('/api/featured-video');
+                const video = response.data;
+                
+                document.getElementById('videoTitle').value = video.title || '';
+                document.getElementById('videoUrl').value = video.url || '';
+                document.getElementById('videoDescription').value = video.description || '';
+                
+                const preview = document.getElementById('currentVideoPreview');
+                if (video.url) {
+                    preview.innerHTML = `<iframe src="${video.url}" allowfullscreen></iframe>`;
+                } else {
+                    preview.innerHTML = '<p style="text-align: center; opacity: 0.7;">No featured video set</p>';
+                }
+                
+                document.getElementById('currentVideoDescription').textContent = video.description || '';
+            } catch (error) {
+                console.error('Failed to load featured video:', error);
+            }
+        }
+
         // Stats Overview
         async function updateStats() {
             try {
@@ -684,6 +808,10 @@
         // Initialize the application
         async function init() {
             try {
+                // Setup file previews
+                setupFilePreview('photoFile', 'filePreview');
+                setupFilePreview('homeImageFile', 'homeImagePreview');
+                
                 // Test API connection
                 await apiCall('/');
                 
@@ -697,7 +825,7 @@
                     updateStats()
                 ]);
                 
-                showAlert('Admin panel connected successfully!', 'success');
+                showAlert('Admin panel connected successfully! Images will be stored in Firebase Storage.', 'success');
             } catch (error) {
                 showAlert('Failed to connect to API. Please ensure the server is running on localhost:3000', 'error');
                 console.error('Initialization error:', error);
@@ -707,5 +835,72 @@
         // Start the application when the page loads
         window.addEventListener('DOMContentLoaded', init);
     </script>
+
+    <style>
+        /* Additional styles for file preview and progress bar */
+        .file-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preview-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 100px;
+        }
+
+        .preview-item img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 3px;
+        }
+
+        .preview-item span {
+            font-size: 10px;
+            text-align: center;
+            margin-top: 5px;
+            word-break: break-all;
+        }
+
+        .file-size {
+            opacity: 0.7;
+            font-size: 9px !important;
+        }
+
+        .upload-progress {
+            margin-top: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        #progressText {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
 </body>
 </html>

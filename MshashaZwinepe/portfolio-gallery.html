@@ -1,538 +1,526 @@
-  <!DOCTYPE html>
-  <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Gallery - Mshasha Zwinepe</title>
-    <link rel="stylesheet" href="./src/style.css">
-    <style>
-      /* Additional styles specific to the gallery page */
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Gallery - Mshasha Zwinepe</title>
+  <link rel="stylesheet" href="./src/style.css">
+  <style>
+    /* Additional styles specific to the gallery page */
+    .gallery-header {
+      padding: 120px 60px 60px;
+      text-align: center;
+      position: relative;
+    }
+    
+    .gallery-title {
+      font-size: 3.5rem;
+      font-weight: 100;
+      letter-spacing: 5px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .gallery-title::after {
+      content: '';
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    }
+    
+    .gallery-description {
+      max-width: 800px;
+      margin: 40px auto 0;
+      font-size: 1.1rem;
+      line-height: 1.6;
+      opacity: 0.8;
+    }
+    
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 60px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .gallery-item {
+      position: relative;
+      overflow: hidden;
+      border-radius: 0;
+      height: 300px;
+      background: #1a1a1a;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    
+    .gallery-item:hover {
+      transform: scale(1.02);
+    }
+    
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+    
+    .gallery-item:hover img {
+      transform: scale(1.1);
+    }
+    
+    .back-button {
+      position: fixed;
+      top: 110px;
+      left: 60px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--light);
+      padding: 12px 24px;
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .back-button:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+    
+    /* Loading state */
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 100px;
+      font-size: 1.2rem;
+      color: var(--light);
+      opacity: 0.8;
+    }
+    
+    .error-message {
+      text-align: center;
+      padding: 100px 60px;
+      color: #ff6b6b;
+      font-size: 1.1rem;
+    }
+    
+    /* Lightbox modal */
+    .lightbox {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .lightbox.active {
+      display: flex;
+    }
+    
+    .lightbox-content {
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+    }
+    
+    .lightbox-image {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+    }
+    
+    .lightbox-close {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      background: none;
+      border: none;
+      color: var(--light);
+      font-size: 30px;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .lightbox-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--light);
+      font-size: 24px;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .lightbox-nav:hover {
+      background: var(--primary);
+    }
+    
+    .lightbox-prev {
+      left: 20px;
+    }
+    
+    .lightbox-next {
+      right: 20px;
+    }
+    
+    .lightbox-counter {
+      position: absolute;
+      bottom: -40px;
+      left: 0;
+      color: var(--light);
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    
+    @media (max-width: 768px) {
       .gallery-header {
-        padding: 120px 60px 60px;
-        text-align: center;
-        position: relative;
-      }
-      
-      .gallery-title {
-        font-size: 3.5rem;
-        font-weight: 100;
-        letter-spacing: 5px;
-        margin-bottom: 20px;
-        text-transform: uppercase;
-        position: relative;
-        display: inline-block;
-      }
-      
-      .gallery-title::after {
-        content: '';
-        position: absolute;
-        bottom: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 100px;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--primary), transparent);
-      }
-      
-      .gallery-description {
-        max-width: 800px;
-        margin: 40px auto 0;
-        font-size: 1.1rem;
-        line-height: 1.6;
-        opacity: 0.8;
+        padding: 100px 30px 40px;
       }
       
       .gallery-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
-        padding: 60px;
-        max-width: 1600px;
-        margin: 0 auto;
-      }
-      
-      .gallery-item {
-        position: relative;
-        overflow: hidden;
-        border-radius: 0;
-        height: 300px;
-        background: #1a1a1a;
-        cursor: pointer;
-        transition: transform 0.3s ease;
-      }
-      
-      .gallery-item:hover {
-        transform: scale(1.02);
-      }
-      
-      .gallery-item img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s ease;
-      }
-      
-      .gallery-item:hover img {
-        transform: scale(1.1);
+        padding: 40px 20px;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       }
       
       .back-button {
-        position: fixed;
-        top: 110px;
-        left: 60px;
-        z-index: 100;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: var(--light);
-        padding: 12px 24px;
-        font-size: 14px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
+        top: 90px;
+        left: 30px;
+        padding: 10px 20px;
       }
-      
-      .back-button:hover {
-        background: var(--primary);
-        border-color: var(--primary);
-      }
-      
-      /* Lightbox modal */
-      .lightbox {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 10000;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .lightbox.active {
-        display: flex;
-      }
-      
-      .lightbox-content {
-        position: relative;
-        max-width: 90%;
-        max-height: 90%;
-      }
-      
-      .lightbox-image {
-        max-width: 100%;
-        max-height: 90vh;
-        object-fit: contain;
-      }
-      
-      .lightbox-close {
-        position: absolute;
-        top: -40px;
-        right: 0;
-        background: none;
-        border: none;
-        color: var(--light);
-        font-size: 30px;
-        cursor: pointer;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .lightbox-nav {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        background: rgba(255, 255, 255, 0.1);
-        border: none;
-        color: var(--light);
-        font-size: 24px;
-        width: 50px;
-        height: 50px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-      }
-      
-      .lightbox-nav:hover {
-        background: var(--primary);
-      }
-      
-      .lightbox-prev {
-        left: 20px;
-      }
-      
-      .lightbox-next {
-        right: 20px;
-      }
-      
-      .lightbox-counter {
-        position: absolute;
-        bottom: -40px;
-        left: 0;
-        color: var(--light);
-        font-size: 14px;
-        letter-spacing: 1px;
-      }
-      
-      @media (max-width: 768px) {
-        .gallery-header {
-          padding: 100px 30px 40px;
-        }
-        
-        .gallery-grid {
-          padding: 40px 20px;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        }
-        
-        .back-button {
-          top: 90px;
-          left: 30px;
-          padding: 10px 20px;
-        }
-      }
-    </style>
-  </head>
+    }
+  </style>
+</head>
 
-  <body>
-    <!-- 3D Particle System Background -->
-    <div id="particle-container"></div>
+<body>
+  <!-- 3D Particle System Background -->
+  <div id="particle-container"></div>
 
-    <!-- Custom Camera Cursor -->
-    <div class="camera-cursor">
-      <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="20" cy="20" r="18" />
-        <circle cx="20" cy="20" r="12" />
-        <circle cx="20" cy="20" r="6" />
-        <line x1="20" y1="2" x2="20" y2="8" />
-        <line x1="20" y1="32" x2="20" y2="38" />
-        <line x1="2" y1="20" x2="8" y2="20" />
-        <line x1="32" y1="20" x2="38" y2="20" />
-      </svg>
-    </div>
-    <div class="cursor-dot"></div>
+  <!-- Custom Camera Cursor -->
+  <div class="camera-cursor">
+    <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="20" cy="20" r="18" />
+      <circle cx="20" cy="20" r="12" />
+      <circle cx="20" cy="20" r="6" />
+      <line x1="20" y1="2" x2="20" y2="8" />
+      <line x1="20" y1="32" x2="20" y2="38" />
+      <line x1="2" y1="20" x2="8" y2="20" />
+      <line x1="32" y1="20" x2="38" y2="20" />
+    </svg>
+  </div>
+  <div class="cursor-dot"></div>
 
-    <!-- Navigation -->
-    <nav id="navbar">
-      <div class="nav-container">
-        <div class="logo">
-          <img src="/logo.png" alt="Mshasha Zwinepe Logo" class="logo-image" style="width: 12vh;">
-        </div>
-        <ul class="nav-links">
-          <li><a href="index.html" class="nav-link">Home</a></li>
-          <li><a href="index.html#portfolio" class="nav-link">Portfolio</a></li>
-          <li><a href="index.html#about" class="nav-link">About</a></li>
-          <li><a href="index.html#services" class="nav-link">Services</a></li>
-          <li><a href="index.html#customers" class="nav-link">Our Customers</a></li>
-          <li><a href="index.html#contact" class="nav-link">Contact</a></li>
-        </ul>
+  <!-- Navigation -->
+  <nav id="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <img src="/logo.png" alt="Mshasha Zwinepe Logo" class="logo-image" style="width: 12vh;">
       </div>
-    </nav>
-
-    <!-- Back Button -->
-    <button class="back-button" onclick="window.history.back()">← Back</button>
-    
-    <!-- Gallery Header -->
-    <section class="gallery-header">
-      <h1 class="gallery-title" id="galleryTitle">Wedding Gallery</h1>
-      <p class="gallery-description" id="galleryDescription">A stunning collection of moments from this beautiful celebration of love.</p>
-    </section>
-
-    <!-- Gallery Grid -->
-    <div class="gallery-grid" id="galleryGrid">
-      <!-- Images will be populated by JavaScript -->
+      <ul class="nav-links">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="index.html#portfolio" class="nav-link">Portfolio</a></li>
+        <li><a href="index.html#about" class="nav-link">About</a></li>
+        <li><a href="index.html#services" class="nav-link">Services</a></li>
+        <li><a href="index.html#customers" class="nav-link">Our Customers</a></li>
+        <li><a href="index.html#contact" class="nav-link">Contact</a></li>
+      </ul>
     </div>
+  </nav>
 
-    <!-- Lightbox Modal -->
-    <div class="lightbox" id="lightbox">
-      <button class="lightbox-close" id="lightboxClose">×</button>
-      <button class="lightbox-nav lightbox-prev" id="lightboxPrev">‹</button>
-      <button class="lightbox-nav lightbox-next" id="lightboxNext">›</button>
-      <div class="lightbox-content">
-        <img class="lightbox-image" id="lightboxImage" src="" alt="">
-        <div class="lightbox-counter" id="lightboxCounter">1 / 50</div>
-      </div>
+  <!-- Back Button -->
+  <button class="back-button" onclick="window.history.back()">← Back</button>
+  
+  <!-- Gallery Header -->
+  <section class="gallery-header">
+    <h1 class="gallery-title" id="galleryTitle">Loading...</h1>
+    <p class="gallery-description" id="galleryDescription"></p>
+  </section>
+
+  <!-- Loading State -->
+  <div class="loading" id="loadingState">Loading portfolio images...</div>
+
+  <!-- Error Message -->
+  <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+  <!-- Gallery Grid -->
+  <div class="gallery-grid" id="galleryGrid" style="display: none;">
+    <!-- Images will be populated by JavaScript -->
+  </div>
+
+  <!-- Lightbox Modal -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">×</button>
+    <button class="lightbox-nav lightbox-prev" id="lightboxPrev">‹</button>
+    <button class="lightbox-nav lightbox-next" id="lightboxNext">›</button>
+    <div class="lightbox-content">
+      <img class="lightbox-image" id="lightboxImage" src="" alt="">
+      <div class="lightbox-counter" id="lightboxCounter">1 / 0</div>
     </div>
+  </div>
 
-    <!-- Three.js Import -->
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js"
-        }
+  <!-- Three.js Import -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js"
       }
-    </script>
+    }
+  </script>
 
-    <script type="module" src="./src/particles.js"></script>
+  <script type="module" src="./src/particles.js"></script>
 
-    <script>
-      // Custom cursor (same as main page)
-      const cursor = document.querySelector('.camera-cursor');
-      const cursorDot = document.querySelector('.cursor-dot');
+  <script>
+    // Custom cursor (same as main page)
+    const cursor = document.querySelector('.camera-cursor');
+    const cursorDot = document.querySelector('.cursor-dot');
 
-      document.addEventListener('mousemove', (e) => {
-        cursor.style.left = e.clientX + 'px';
-        cursor.style.top = e.clientY + 'px';
-        cursorDot.style.left = (e.clientX - 4) + 'px';
-        cursorDot.style.top = (e.clientY - 4) + 'px';
+    document.addEventListener('mousemove', (e) => {
+      cursor.style.left = e.clientX + 'px';
+      cursor.style.top = e.clientY + 'px';
+      cursorDot.style.left = (e.clientX - 4) + 'px';
+      cursorDot.style.top = (e.clientY - 4) + 'px';
+    });
+
+    // Add hover effect to clickable elements
+    document.querySelectorAll('button, a, .gallery-item').forEach(elem => {
+      elem.addEventListener('mouseenter', () => {
+        cursor.style.transform = 'scale(1.5)';
+        cursorDot.style.transform = 'scale(2)';
       });
+      elem.addEventListener('mouseleave', () => {
+        cursor.style.transform = 'scale(1)';
+        cursorDot.style.transform = 'scale(1)';
+      });
+    });
 
-      // Add hover effect to clickable elements
-      document.querySelectorAll('button, a, .gallery-item').forEach(elem => {
-        elem.addEventListener('mouseenter', () => {
+    // Navigation scroll effect
+    window.addEventListener('scroll', () => {
+      const navbar = document.getElementById('navbar');
+      if (window.scrollY > 100) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+    });
+
+    // Get portfolio item ID from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const portfolioId = urlParams.get('id');
+
+    // Portfolio data variable
+    let portfolioData = null;
+
+    // Fetch portfolio item from API
+    async function fetchPortfolioItem() {
+      if (!portfolioId) {
+        showError('No portfolio item ID provided in the URL');
+        return;
+      }
+
+      try {
+        showLoading();
+        
+        const response = await fetch(`/api/portfolio/${portfolioId}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.message || 'Failed to fetch portfolio item');
+        }
+        
+        if (!result.success) {
+          throw new Error(result.message || 'Failed to load portfolio item');
+        }
+        
+        portfolioData = result.data;
+        renderGallery();
+        
+      } catch (error) {
+        console.error('Error fetching portfolio item:', error);
+        showError(`Error loading portfolio: ${error.message}`);
+      }
+    }
+
+    // Show loading state
+    function showLoading() {
+      document.getElementById('loadingState').style.display = 'flex';
+      document.getElementById('errorMessage').style.display = 'none';
+      document.getElementById('galleryGrid').style.display = 'none';
+    }
+
+    // Show error message
+    function showError(message) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorMessage').style.display = 'block';
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('galleryGrid').style.display = 'none';
+      
+      // Update header to show error state
+      document.getElementById('galleryTitle').textContent = 'Error';
+      document.getElementById('galleryDescription').textContent = '';
+    }
+
+    // Render gallery with fetched data
+    function renderGallery() {
+      if (!portfolioData) {
+        showError('No portfolio data available');
+        return;
+      }
+
+      // Update header
+      document.getElementById('galleryTitle').textContent = portfolioData.title;
+      document.getElementById('galleryDescription').textContent = portfolioData.description;
+
+      // Render images
+      const galleryGrid = document.getElementById('galleryGrid');
+      const images = portfolioData.images;
+      
+      galleryGrid.innerHTML = '';
+      
+      if (!images || images.length === 0) {
+        showError('No images found in this portfolio item');
+        return;
+      }
+      
+      images.forEach((imageUrl, index) => {
+        const galleryItem = document.createElement('div');
+        galleryItem.className = 'gallery-item';
+        galleryItem.setAttribute('data-index', index);
+        galleryItem.innerHTML = `<img src="${imageUrl}" alt="${portfolioData.title} - Image ${index + 1}" loading="lazy">`;
+        galleryGrid.appendChild(galleryItem);
+      });
+      
+      // Show the gallery grid
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorMessage').style.display = 'none';
+      document.getElementById('galleryGrid').style.display = 'grid';
+      
+      // Add click event to gallery items
+      document.querySelectorAll('.gallery-item').forEach(item => {
+        item.addEventListener('click', () => {
+          openLightbox(parseInt(item.getAttribute('data-index')));
+        });
+        
+        // Add hover effect for custom cursor
+        item.addEventListener('mouseenter', () => {
           cursor.style.transform = 'scale(1.5)';
           cursorDot.style.transform = 'scale(2)';
         });
-        elem.addEventListener('mouseleave', () => {
+        item.addEventListener('mouseleave', () => {
           cursor.style.transform = 'scale(1)';
           cursorDot.style.transform = 'scale(1)';
         });
       });
+    }
 
-      // Navigation scroll effect
-      window.addEventListener('scroll', () => {
-        const navbar = document.getElementById('navbar');
-        if (window.scrollY > 100) {
-          navbar.classList.add('scrolled');
-        } else {
-          navbar.classList.remove('scrolled');
-        }
-      });
+    // Lightbox functionality
+    let currentImageIndex = 0;
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxClose = document.getElementById('lightboxClose');
+    const lightboxPrev = document.getElementById('lightboxPrev');
+    const lightboxNext = document.getElementById('lightboxNext');
+    const lightboxCounter = document.getElementById('lightboxCounter');
 
-      // Enhanced mock data for gallery images with proper Unsplash URLs
-      const galleryData = {
-        wedding: {
-          title: "Wedding Photography",
-          description: "Capturing the magic of your special day with timeless elegance and authentic emotions.",
-          images: [
-            'https://images.unsplash.com/photo-1519225421980-715cb0215aed',
-            'https://images.unsplash.com/photo-1583939003579-730e3918a45a',
-            'https://images.unsplash.com/photo-1606800052052-a08af7148866',
-            'https://images.unsplash.com/photo-1519741497674-611481863552',
-            'https://images.unsplash.com/photo-1591604466107-ec97de577aff',
-            'https://images.unsplash.com/photo-1550005809-91ad75fb315f',
-            'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6',
-            'https://images.unsplash.com/photo-1537633552985-df8429e8048b',
-            'https://images.unsplash.com/photo-1511285560929-80b456fea0bc',
-            'https://images.unsplash.com/photo-1529636798458-92182e662485',
-            'https://images.unsplash.com/photo-1460978812857-470ed1c77af0',
-            'https://images.unsplash.com/photo-1529634806980-85c3dd6d34ac',
-            'https://images.unsplash.com/photo-1546032996-6dfacbacbf3f',
-            'https://images.unsplash.com/photo-1522673607200-164d1b6ce486',
-            'https://images.unsplash.com/photo-1544078751-58fee2d8a03b',
-            'https://images.unsplash.com/photo-1520854221256-17451cc331bf',
-            'https://images.unsplash.com/photo-1532712938310-34cb3982ef74',
-            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
-            'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2',
-            'https://images.unsplash.com/photo-1525258946800-98cfd641d0de',
-            'https://images.unsplash.com/photo-1522413452208-996ff3f3e740',
-            'https://images.unsplash.com/photo-1505932794465-147d1f1b2c97',
-            'https://images.unsplash.com/photo-1516446636564-c48e723868fc',
-            'https://images.unsplash.com/photo-1549417229-7686ac5595fd',
-            'https://images.unsplash.com/photo-1595407753234-0882f1e77954'
-          ].map(url => `${url}?w=800&h=600&fit=crop`)
-        },
-        portrait: {
-          title: "Portrait Photography",
-          description: "Authentic portraits that reveal true character and capture genuine emotions.",
-          images: [
-            'https://images.unsplash.com/photo-1544005313-94ddf0286df2',
-            'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04',
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
-            'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-            'https://images.unsplash.com/photo-1517841905240-472988babdf9',
-            'https://images.unsplash.com/photo-1524504388940-b1c1722653e1',
-            'https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453',
-            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
-            'https://images.unsplash.com/photo-1504257432389-52343af06ae3',
-            'https://images.unsplash.com/photo-1521119989659-a83eee488004',
-            'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',
-            'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df',
-            'https://images.unsplash.com/photo-1464863979621-258859e62245',
-            'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c',
-            'https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4',
-            'https://images.unsplash.com/photo-1548142813-c348350df52b',
-            'https://images.unsplash.com/photo-1557053910-d9eadeed1c58',
-            'https://images.unsplash.com/photo-1542103749-8ef59b94f47e',
-            'https://images.unsplash.com/photo-1488716820095-cbe80883c496',
-            'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91'
-          ].map(url => `${url}?w=800&h=600&fit=crop`)
-        },
-        event: {
-          title: "Event Photography",
-          description: "Professional coverage that captures the energy and essence of your special occasions.",
-          images: [
-            'https://images.unsplash.com/photo-1540575467063-178a50c2df87',
-            'https://images.unsplash.com/photo-1505373877841-8d25f7d46678',
-            'https://images.unsplash.com/photo-1511795409834-ef04bbd61622',
-            'https://images.unsplash.com/photo-1558618666-fcd25c85cd64',
-            'https://images.unsplash.com/photo-1475721027785-f74eccf877e2',
-            'https://images.unsplash.com/photo-1531058020387-3be344556be6',
-            'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf',
-            'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04',
-            'https://images.unsplash.com/photo-1556125574-d7f27ec36a06',
-            'https://images.unsplash.com/photo-1523580494863-6f3031224c94',
-            'https://images.unsplash.com/photo-1492684223066-81342ee5ff30',
-            'https://images.unsplash.com/photo-1478147427282-58a87a120781',
-            'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4',
-            'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3',
-            'https://images.unsplash.com/photo-1459749411175-04bf5292ceea',
-            'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec',
-            'https://images.unsplash.com/photo-1496843916299-590492c751f4',
-            'https://images.unsplash.com/photo-1551818255-e6e10975bc17',
-            'https://images.unsplash.com/photo-1504680177321-2e6a879aac86',
-            'https://images.unsplash.com/photo-1561489422-45de3d015e20',
-            'https://images.unsplash.com/photo-1527529482837-4698179dc6ce',
-            'https://images.unsplash.com/photo-1549451371-64aa98a6f660'
-          ].map(url => `${url}?w=800&h=600&fit=crop`)
-        },
-        commercial: {
-          title: "Commercial Photography",
-          description: "Professional product and brand photography that tells your story and drives results.",
-          images: [
-            'https://images.unsplash.com/photo-1441986300917-64674bd600d8',
-            'https://images.unsplash.com/photo-1472851294608-062f824d29cc',
-            'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d',
-            'https://images.unsplash.com/photo-1491637639811-60e2756cc1c7',
-            'https://images.unsplash.com/photo-1560769629-975ec94e6a86',
-            'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
-            'https://images.unsplash.com/photo-1523275335684-37898b6baf30',
-            'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f',
-            'https://images.unsplash.com/photo-1484704849700-f032a568e944',
-            'https://images.unsplash.com/photo-1572635196237-14b3f281503f',
-            'https://images.unsplash.com/photo-1503602642458-232111445657',
-            'https://images.unsplash.com/photo-1527004013197-933c4bb611b3',
-            'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c',
-            'https://images.unsplash.com/photo-1541643600914-78b084683601',
-            'https://images.unsplash.com/photo-1505740420928-5e560c06d30e'
-          ].map(url => `${url}?w=800&h=600&fit=crop`)
-        }
-      };
+    function openLightbox(index) {
+      if (!portfolioData || !portfolioData.images) return;
+      
+      currentImageIndex = index;
+      updateLightbox();
+      lightbox.classList.add('active');
+      document.body.style.overflow = 'hidden'; // Prevent scrolling
+    }
 
-      // Get gallery type from URL parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const galleryType = urlParams.get('type') || 'wedding';
+    function closeLightbox() {
+      lightbox.classList.remove('active');
+      document.body.style.overflow = 'auto'; // Re-enable scrolling
+    }
 
-      // Ensure we have valid gallery type, fallback to wedding if not
-      const validGalleryType = galleryData[galleryType] ? galleryType : 'wedding';
+    function updateLightbox() {
+      if (!portfolioData || !portfolioData.images) return;
+      
+      const images = portfolioData.images;
+      lightboxImage.src = images[currentImageIndex];
+      lightboxCounter.textContent = `${currentImageIndex + 1} / ${images.length}`;
+    }
 
-      // Set gallery title and description
-      document.getElementById('galleryTitle').textContent = galleryData[validGalleryType].title;
-      document.getElementById('galleryDescription').textContent = galleryData[validGalleryType].description;
-
-      // Render gallery images
-      function renderGallery() {
-        const galleryGrid = document.getElementById('galleryGrid');
-        const images = galleryData[validGalleryType].images;
-        
-        galleryGrid.innerHTML = '';
-        images.forEach((image, index) => {
-          const galleryItem = document.createElement('div');
-          galleryItem.className = 'gallery-item';
-          galleryItem.setAttribute('data-index', index);
-          galleryItem.innerHTML = `<img src="${image}" alt="${galleryData[validGalleryType].title} - Image ${index + 1}" loading="lazy">`;
-          galleryGrid.appendChild(galleryItem);
-        });
-        
-        // Add click event to gallery items
-        document.querySelectorAll('.gallery-item').forEach(item => {
-          item.addEventListener('click', () => {
-            openLightbox(parseInt(item.getAttribute('data-index')));
-          });
-          
-          // Add hover effect for custom cursor
-          item.addEventListener('mouseenter', () => {
-            cursor.style.transform = 'scale(1.5)';
-            cursorDot.style.transform = 'scale(2)';
-          });
-          item.addEventListener('mouseleave', () => {
-            cursor.style.transform = 'scale(1)';
-            cursorDot.style.transform = 'scale(1)';
-          });
-        });
+    function navigateLightbox(direction) {
+      if (!portfolioData || !portfolioData.images) return;
+      
+      const images = portfolioData.images;
+      currentImageIndex += direction;
+      
+      if (currentImageIndex < 0) {
+        currentImageIndex = images.length - 1;
+      } else if (currentImageIndex >= images.length) {
+        currentImageIndex = 0;
       }
+      
+      updateLightbox();
+    }
 
-      // Lightbox functionality
-      let currentImageIndex = 0;
-      const lightbox = document.getElementById('lightbox');
-      const lightboxImage = document.getElementById('lightboxImage');
-      const lightboxClose = document.getElementById('lightboxClose');
-      const lightboxPrev = document.getElementById('lightboxPrev');
-      const lightboxNext = document.getElementById('lightboxNext');
-      const lightboxCounter = document.getElementById('lightboxCounter');
+    // Lightbox event listeners
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
+    lightboxNext.addEventListener('click', () => navigateLightbox(1));
 
-      function openLightbox(index) {
-        currentImageIndex = index;
-        updateLightbox();
-        lightbox.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Prevent scrolling
-      }
-
-      function closeLightbox() {
-        lightbox.classList.remove('active');
-        document.body.style.overflow = 'auto'; // Re-enable scrolling
-      }
-
-      function updateLightbox() {
-        const images = galleryData[validGalleryType].images;
-        lightboxImage.src = images[currentImageIndex];
-        lightboxCounter.textContent = `${currentImageIndex + 1} / ${images.length}`;
-      }
-
-      function navigateLightbox(direction) {
-        const images = galleryData[validGalleryType].images;
-        currentImageIndex += direction;
-        
-        if (currentImageIndex < 0) {
-          currentImageIndex = images.length - 1;
-        } else if (currentImageIndex >= images.length) {
-          currentImageIndex = 0;
-        }
-        
-        updateLightbox();
-      }
-
-      // Lightbox event listeners
-      lightboxClose.addEventListener('click', closeLightbox);
-      lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
-      lightboxNext.addEventListener('click', () => navigateLightbox(1));
-
-      // Keyboard navigation
-      document.addEventListener('keydown', (e) => {
-        if (!lightbox.classList.contains('active')) return;
-        
-        switch(e.key) {
-          case 'Escape':
-            closeLightbox();
-            break;
-          case 'ArrowLeft':
-            navigateLightbox(-1);
-            break;
-          case 'ArrowRight':
-            navigateLightbox(1);
-            break;
-        }
-      });
-
-      // Close lightbox when clicking outside the image
-      lightbox.addEventListener('click', (e) => {
-        if (e.target === lightbox) {
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (!lightbox.classList.contains('active')) return;
+      
+      switch(e.key) {
+        case 'Escape':
           closeLightbox();
-        }
-      });
+          break;
+        case 'ArrowLeft':
+          navigateLightbox(-1);
+          break;
+        case 'ArrowRight':
+          navigateLightbox(1);
+          break;
+      }
+    });
 
-      // Initialize the gallery
-      renderGallery();
-    </script>
-  </body>
+    // Close lightbox when clicking outside the image
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) {
+        closeLightbox();
+      }
+    });
 
-  </html>
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchPortfolioItem();
+    });
+  </script>
+</body>
+
+</html>

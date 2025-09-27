@@ -89,9 +89,10 @@
       <div class="section-header">
         <h2 class="section-title">Featured Video</h2>
       </div>
-      <div style="max-width: 1200px; margin: 0 auto;">
+      <div id="featuredVideoContainer" style="max-width: 1200px; margin: 0 auto;">
         <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
           <iframe 
+            id="featuredVideoIframe"
             src="https://www.youtube.com/embed/gEIzxwlfcAk" 
             title="Featured Wedding Videography" 
             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
@@ -99,7 +100,7 @@
             allowfullscreen>
           </iframe>
         </div>
-        <p style="text-align: center; margin-top: 30px; font-size: 1.1rem; opacity: 0.8; max-width: 800px; margin-left: auto; margin-right: auto;">
+        <p id="featuredVideoDescription" style="text-align: center; margin-top: 30px; font-size: 1.1rem; opacity: 0.8; max-width: 800px; margin-left: auto; margin-right: auto;">
           Experience the magic of our cinematography. We don't just capture moments, we create cinematic stories that you'll treasure forever.
         </p>
       </div>
@@ -110,32 +111,10 @@
       <div class="section-header">
         <h2 class="section-title">Recent Work</h2>
       </div>
-      <div class="portfolio-grid">
-        <div class="portfolio-item" onclick="window.location.href='portfolio-gallery.html?type=wedding'">
-          <img src="wedding-image.jpg" alt="Wedding Photography">
-          <div class="portfolio-overlay">
-            <div class="portfolio-category">Weddings</div>
-            <h3 class="portfolio-title">Elegant Beach Wedding</h3>
-            <p class="portfolio-description">A stunning sunset ceremony captured at the coast</p>
-          </div>
-        </div>
-        <div class="portfolio-item" onclick="window.location.href='portfolio-gallery.html?type=portrait'">
-          <img src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&h=600&fit=crop"
-            alt="Portrait Photography">
-          <div class="portfolio-overlay">
-            <div class="portfolio-category">Portraits</div>
-            <h3 class="portfolio-title">Natural Beauty</h3>
-            <p class="portfolio-description">Authentic portraits that capture true personality</p>
-          </div>
-        </div>
-        <div class="portfolio-item" onclick="window.location.href='portfolio-gallery.html?type=event'">
-          <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&h=600&fit=crop"
-            alt="Event Photography">
-          <div class="portfolio-overlay">
-            <div class="portfolio-category">Events</div>
-            <h3 class="portfolio-title">Corporate Excellence</h3>
-            <p class="portfolio-description">Professional event coverage for memorable occasions</p>
-          </div>
+      <div class="portfolio-grid" id="homePortfolioGrid">
+        <!-- Portfolio items will be loaded dynamically from API -->
+        <div class="loading-placeholder" style="grid-column: 1 / -1; text-align: center; padding: 60px 0; opacity: 0.6;">
+          Loading recent work...
         </div>
       </div>
     </section>
@@ -343,6 +322,33 @@
   <script type="module" src="./src/particles.js"> </script>
 
   <script>
+    // API Configuration
+    const API_BASE_URL = '';
+
+    // API Helper Function
+    async function apiCall(endpoint, options = {}) {
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          },
+          ...options
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('API call failed:', error);
+        // Return fallback data if API fails
+        return null;
+      }
+    }
+
     // Custom cursor
     const cursor = document.querySelector('.camera-cursor');
     const cursorDot = document.querySelector('.cursor-dot');
@@ -449,65 +455,69 @@
       statsObserver.observe(statsSection);
     }
 
-    // Portfolio data with gallery types
-    const portfolioItems = [
-      {
-        category: 'Weddings',
-        title: 'Garden Romance',
-        description: 'An enchanting outdoor ceremony',
-        image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop',
-        galleryType: 'wedding'
-      },
-      {
-        category: 'Portraits',
-        title: 'Urban Expression',
-        description: 'Street style portrait session',
-        image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&h=600&fit=crop',
-        galleryType: 'portrait'
-      },
-      {
-        category: 'Events',
-        title: 'Celebration Night',
-        description: 'Corporate gala coverage',
-        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop',
-        galleryType: 'event'
-      },
-      {
-        category: 'Weddings',
-        title: 'Beach Sunset',
-        description: 'Romantic coastal ceremony',
-        image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&h=600&fit=crop',
-        galleryType: 'wedding'
-      },
-      {
-        category: 'Commercial',
-        title: 'Brand Story',
-        description: 'Product photography campaign',
-        image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=600&fit=crop',
-        galleryType: 'commercial'
-      },
-      {
-        category: 'Portraits',
-        title: 'Natural Light',
-        description: 'Outdoor portrait session',
-        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=600&fit=crop',
-        galleryType: 'portrait'
+    // Load Featured Video from API
+    async function loadFeaturedVideo() {
+      try {
+        const response = await apiCall('/api/featured-video');
+        if (response && response.data) {
+          const video = response.data;
+          const iframe = document.getElementById('featuredVideoIframe');
+          const description = document.getElementById('featuredVideoDescription');
+          
+          if (video.url) {
+            // Convert YouTube URL to embed format if needed
+            let embedUrl = video.url;
+            if (embedUrl.includes('youtube.com/watch?v=')) {
+              const videoId = embedUrl.split('v=')[1].split('&')[0];
+              embedUrl = `https://www.youtube.com/embed/${videoId}`;
+            }
+            
+            iframe.src = embedUrl;
+            iframe.title = video.title || 'Featured Video';
+          }
+          
+          if (video.description) {
+            description.textContent = video.description;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load featured video:', error);
+        // Keep default video if API fails
       }
-    ];
+    }
 
-    // Populate portfolio with proper gallery navigation
-    function renderPortfolio() {
-      const gallery = document.getElementById('portfolioGallery');
-      if (!gallery) return;
+    // Load Home Portfolio Items from API
+    async function loadHomePortfolioItems() {
+      const grid = document.getElementById('homePortfolioGrid');
+      
+      try {
+        const response = await apiCall('/api/home-portfolio');
+        
+        if (response && response.data && response.data.length > 0) {
+          renderHomePortfolio(response.data);
+        } else {
+          // Use fallback portfolio items
+          renderHomePortfolio(getFallbackPortfolioItems());
+        }
+      } catch (error) {
+        console.error('Failed to load home portfolio items:', error);
+        // Use fallback portfolio items
+        renderHomePortfolio(getFallbackPortfolioItems());
+      }
+    }
 
-      gallery.innerHTML = '';
+    // Render Home Portfolio Items
+    function renderHomePortfolio(portfolioItems) {
+      const grid = document.getElementById('homePortfolioGrid');
+      grid.innerHTML = '';
+
       portfolioItems.forEach(item => {
         const portfolioItem = document.createElement('div');
         portfolioItem.className = 'portfolio-item';
         portfolioItem.style.cursor = 'pointer';
         
-        // Determine the gallery type based on category
-        const galleryType = item.galleryType || item.category.toLowerCase().replace(/s$/, '');
+        // Store the item ID as a data attribute
+        portfolioItem.dataset.portfolioId = item.id || item._id || generateFallbackId();
         
         portfolioItem.innerHTML = `
           <img 
@@ -521,18 +531,125 @@
           </div>
         `;
         
-        // Add click event to navigate to portfolio-gallery.html with the correct type
+        // Add click event to navigate to portfolio gallery with ID
         portfolioItem.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          window.location.href = `portfolio-gallery.html?type=${galleryType}`;
+          const portfolioId = portfolioItem.dataset.portfolioId;
+          window.location.href = `portfolio-gallery.html?id=${portfolioId}`;
+        });
+        
+        grid.appendChild(portfolioItem);
+        
+        // Re-add hover effects to new elements
+        portfolioItem.addEventListener('mouseenter', () => {
+          cursor.style.transform = 'scale(1.5)';
+          cursorDot.style.transform = 'scale(2)';
+        });
+        portfolioItem.addEventListener('mouseleave', () => {
+          cursor.style.transform = 'scale(1)';
+          cursorDot.style.transform = 'scale(1)';
+        });
+      });
+    }
+
+    // Fallback portfolio items (used when API is not available)
+    function getFallbackPortfolioItems() {
+      return [
+        {
+          id: 'wedding-garden-romance',
+          category: 'Weddings',
+          title: 'Garden Romance',
+          description: 'An enchanting outdoor ceremony',
+          image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop',
+          galleryType: 'wedding'
+        },
+        {
+          id: 'portrait-urban-expression',
+          category: 'Portraits',
+          title: 'Urban Expression',
+          description: 'Street style portrait session',
+          image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&h=600&fit=crop',
+          galleryType: 'portrait'
+        },
+        {
+          id: 'event-celebration-night',
+          category: 'Events',
+          title: 'Celebration Night',
+          description: 'Corporate gala coverage',
+          image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop',
+          galleryType: 'event'
+        }
+      ];
+    }
+
+    // Load Portfolio Items for Portfolio Page
+    async function loadPortfolioItems() {
+      try {
+        const response = await apiCall('/api/portfolio');
+        
+        if (response && response.data && response.data.length > 0) {
+          renderPortfolioPage(response.data);
+        } else {
+          // Use fallback data
+          renderPortfolioPage(getFallbackPortfolioItems());
+        }
+      } catch (error) {
+        console.error('Failed to load portfolio items:', error);
+        // Use fallback data
+        renderPortfolioPage(getFallbackPortfolioItems());
+      }
+    }
+
+    // Render Portfolio Page
+    function renderPortfolioPage(portfolioItems) {
+      const gallery = document.getElementById('portfolioGallery');
+      if (!gallery) return;
+
+      gallery.innerHTML = '';
+      
+      portfolioItems.forEach(item => {
+        const portfolioItem = document.createElement('div');
+        portfolioItem.className = 'portfolio-item';
+        portfolioItem.style.cursor = 'pointer';
+        
+        // Store the item ID as a data attribute
+        portfolioItem.dataset.portfolioId = item.id || item._id || generateFallbackId();
+        
+        // Use first image from images array, or fallback
+        const imageUrl = (item.images && item.images.length > 0) ? 
+          item.images[0] : 
+          item.image || 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop';
+        
+        portfolioItem.innerHTML = `
+          <img 
+            src="${imageUrl}" 
+            alt="${item.title}"
+            onerror="this.src='https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop'"
+          />
+          <div class="portfolio-overlay">
+            <div class="portfolio-category">${item.categoryName || item.category || 'Portfolio'}</div>
+            <h3 class="portfolio-title">${item.title}</h3>
+            <p class="portfolio-description">${item.description}</p>
+          </div>
+        `;
+        
+        // Add click event to navigate to portfolio gallery with ID
+        portfolioItem.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const portfolioId = portfolioItem.dataset.portfolioId;
+          window.location.href = `portfolio-gallery.html?id=${portfolioId}`;
         });
         
         gallery.appendChild(portfolioItem);
       });
     }
 
-    renderPortfolio();
+    // Generate fallback ID for items without ID
+    function generateFallbackId() {
+      return 'portfolio-' + Math.random().toString(36).substr(2, 9);
+    }
 
     // Contact form
     document.getElementById('contactForm')?.addEventListener('submit', (e) => {
@@ -540,6 +657,17 @@
       alert('Thank you for your message! I will get back to you soon.');
       e.target.reset();
     });
+
+    // Initialize the application
+    async function initializeApp() {
+      // Load dynamic content
+      await loadFeaturedVideo();
+      await loadHomePortfolioItems();
+      await loadPortfolioItems();
+    }
+
+    // Start the application when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initializeApp);
   </script>
 </body>
 
