@@ -464,10 +464,12 @@
 
         .portfolio-item img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 1s var(--transition);
+            height: auto;
+            /* ratio preserved */
+            object-fit: contain;
+            /* optional, keeps full image visible */
         }
+
 
         .portfolio-item:hover img {
             transform: scale(1.1);
