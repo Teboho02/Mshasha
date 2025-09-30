@@ -884,8 +884,7 @@
             position: relative;
             overflow: hidden;
             border-radius: 0;
-            height: 500px;
-            background: #1a1a1a;
+            height: auto;
             cursor: none;
         }
 
