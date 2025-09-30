@@ -6,6 +6,232 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mshasha Zwinepe - Visual Storyteller</title>
   <link rel="stylesheet" href="./src/style.css">
+  <style>
+    /* Image loading states */
+    .image-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      z-index: 1;
+    }
+    
+    @keyframes loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+    
+    .loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid var(--secondary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      z-index: 2;
+    }
+    
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    
+    /* Portfolio item image loading */
+    .portfolio-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+    
+    .portfolio-item img.loaded {
+      opacity: 1;
+    }
+    
+    /* Customer logo loading */
+    .customer-logo {
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    
+    .customer-logo.loaded {
+      opacity: 1;
+    }
+    
+    /* About image loading */
+    .about-image {
+      width: 100%;
+      filter: grayscale(100%);
+      transition: filter 0.5s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+    
+    .about-image.loaded {
+      opacity: 1;
+    }
+    
+    .about-image:hover {
+      filter: grayscale(0%);
+    }
+    
+    /* Logo loading */
+    .logo-image {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .logo-image.loaded {
+      opacity: 1;
+    }
+
+    /* Hamburger Menu Styles */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: space-around;
+      width: 30px;
+      height: 25px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      z-index: 1001;
+      position: relative;
+    }
+    
+    .hamburger span {
+      width: 100%;
+      height: 3px;
+      background: var(--light);
+      transition: all 0.3s ease;
+      border-radius: 3px;
+    }
+    
+    .hamburger.active span:nth-child(1) {
+      transform: rotate(45deg) translate(8px, 8px);
+    }
+    
+    .hamburger.active span:nth-child(2) {
+      opacity: 0;
+    }
+    
+    .hamburger.active span:nth-child(3) {
+      transform: rotate(-45deg) translate(7px, -7px);
+    }
+    
+    /* Mobile Navigation Styles */
+    @media (max-width: 768px) {
+      nav {
+        padding: 20px 30px;
+      }
+      
+      .hamburger {
+        display: flex;
+      }
+      
+      .nav-links {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 70%;
+        max-width: 300px;
+        height: 100vh;
+        background: rgba(10, 10, 10, 0.98);
+        backdrop-filter: blur(20px);
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 30px;
+        padding: 60px 20px;
+        transition: right 0.3s cubic-bezier(0.43, 0.13, 0.23, 0.96);
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 1000;
+      }
+      
+      .nav-links.active {
+        right: 0;
+      }
+      
+      .nav-links li {
+        width: 100%;
+        text-align: center;
+        opacity: 0;
+        transform: translateX(50px);
+        transition: all 0.3s ease;
+      }
+      
+      .nav-links.active li {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      
+      .nav-links.active li:nth-child(1) { transition-delay: 0.1s; }
+      .nav-links.active li:nth-child(2) { transition-delay: 0.15s; }
+      .nav-links.active li:nth-child(3) { transition-delay: 0.2s; }
+      .nav-links.active li:nth-child(4) { transition-delay: 0.25s; }
+      .nav-links.active li:nth-child(5) { transition-delay: 0.3s; }
+      .nav-links.active li:nth-child(6) { transition-delay: 0.35s; }
+      
+      .nav-link {
+        width: 100%;
+        padding: 15px 20px;
+        font-size: 16px;
+      }
+      
+      .nav-link::after {
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      
+      .nav-link:hover::after,
+      .nav-link.active::after {
+        width: 50%;
+      }
+    }
+    
+    /* Overlay for mobile menu */
+    .nav-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .nav-overlay.active {
+      display: block;
+      opacity: 1;
+    }
+    
+    @media (max-width: 480px) {
+      .nav-links {
+        width: 80%;
+      }
+      
+      .logo-image {
+        width: 8vh !important;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -31,6 +257,8 @@
   <div class="nav-container">
     <div class="logo">
       <img src="/logo.png" alt="Mshasha Zwinepe Logo" class="logo-image" style="width: 12vh;">
+      <div class="image-placeholder" style="display: none;"></div>
+      <div class="loading-spinner" style="display: none;"></div>
     </div>
     
     <!-- Hamburger Menu Button -->
@@ -51,143 +279,6 @@
     </ul>
   </div>
 </nav>
-
-<style>
-  /* Hamburger Menu Styles */
-  .hamburger {
-    display: none;
-    flex-direction: column;
-    justify-content: space-around;
-    width: 30px;
-    height: 25px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    z-index: 1001;
-    position: relative;
-  }
-  
-  .hamburger span {
-    width: 100%;
-    height: 3px;
-    background: var(--light);
-    transition: all 0.3s ease;
-    border-radius: 3px;
-  }
-  
-  .hamburger.active span:nth-child(1) {
-    transform: rotate(45deg) translate(8px, 8px);
-  }
-  
-  .hamburger.active span:nth-child(2) {
-    opacity: 0;
-  }
-  
-  .hamburger.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(7px, -7px);
-  }
-  
-  /* Mobile Navigation Styles */
-  @media (max-width: 768px) {
-    nav {
-      padding: 20px 30px;
-    }
-    
-    .hamburger {
-      display: flex;
-    }
-    
-    .nav-links {
-      position: fixed;
-      top: 0;
-      right: -100%;
-      width: 70%;
-      max-width: 300px;
-      height: 100vh;
-      background: rgba(10, 10, 10, 0.98);
-      backdrop-filter: blur(20px);
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 30px;
-      padding: 60px 20px;
-      transition: right 0.3s cubic-bezier(0.43, 0.13, 0.23, 0.96);
-      border-left: 1px solid rgba(255, 255, 255, 0.1);
-      z-index: 1000;
-    }
-    
-    .nav-links.active {
-      right: 0;
-    }
-    
-    .nav-links li {
-      width: 100%;
-      text-align: center;
-      opacity: 0;
-      transform: translateX(50px);
-      transition: all 0.3s ease;
-    }
-    
-    .nav-links.active li {
-      opacity: 1;
-      transform: translateX(0);
-    }
-    
-    .nav-links.active li:nth-child(1) { transition-delay: 0.1s; }
-    .nav-links.active li:nth-child(2) { transition-delay: 0.15s; }
-    .nav-links.active li:nth-child(3) { transition-delay: 0.2s; }
-    .nav-links.active li:nth-child(4) { transition-delay: 0.25s; }
-    .nav-links.active li:nth-child(5) { transition-delay: 0.3s; }
-    .nav-links.active li:nth-child(6) { transition-delay: 0.35s; }
-    
-    .nav-link {
-      width: 100%;
-      padding: 15px 20px;
-      font-size: 16px;
-    }
-    
-    .nav-link::after {
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-    
-    .nav-link:hover::after,
-    .nav-link.active::after {
-      width: 50%;
-    }
-  }
-  
-  /* Overlay for mobile menu */
-  .nav-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 999;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  
-  .nav-overlay.active {
-    display: block;
-    opacity: 1;
-  }
-  
-  @media (max-width: 480px) {
-    .nav-links {
-      width: 80%;
-    }
-    
-    .logo-image {
-      width: 8vh !important;
-    }
-  }
-</style>
 
 <script>
   // Mobile Menu Toggle
@@ -288,28 +379,6 @@
       </div>
     </section>
 
-    <!-- Featured Video Section -->
-    <section class="video-section" style="padding: 80px 60px; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%);">
-      <div class="section-header">
-        <h2 class="section-title">Featured Video</h2>
-      </div>
-      <div id="featuredVideoContainer" style="max-width: 1200px; margin: 0 auto;">
-        <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-          <iframe 
-            id="featuredVideoIframe"
-            src="https://www.youtube.com/embed/gEIzxwlfcAk" 
-            title="Featured Wedding Videography" 
-            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen>
-          </iframe>
-        </div>
-        <p id="featuredVideoDescription" style="text-align: center; margin-top: 30px; font-size: 1.1rem; opacity: 0.8; max-width: 800px; margin-left: auto; margin-right: auto;">
-          Experience the magic of our cinematography. We don't just capture moments, we create cinematic stories that you'll treasure forever.
-        </p>
-      </div>
-    </section>
-
     <!-- Portfolio Preview -->
     <section class="portfolio-preview">
       <div class="section-header">
@@ -341,6 +410,8 @@
     <div class="about-content">
       <div class="about-image-container">
         <img src="/mshasha.jpg" alt="Mshasha Zwinepe" class="about-image">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
       </div>
       <div class="about-text">
         <h1>About Me</h1>
@@ -415,51 +486,81 @@
     <div class="customers-grid">
 
       <div class="customer-card">
-        <img src="/customers/AfroCentric.png" alt="AfroCentric" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/AfroCentric.png" alt="AfroCentric" class="customer-logo" data-src="/customers/AfroCentric.png">
       </div>
       <div class="customer-card">
-        <img src="/customers/AirLink.png" alt="AirLink" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/AirLink.png" alt="AirLink" class="customer-logo" data-src="/customers/AirLink.png">
       </div>
       <div class="customer-card">
-        <img src="/customers/BP_PRINTING.png" alt="BP Printing" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/BP_PRINTING.png" alt="BP Printing" class="customer-logo" data-src="/customers/BP_PRINTING.png">
       </div>
       <div class="customer-card">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
         <img src="/customers/Carnival_City_Gradient_Gold__Blue_Logo-315x170.png" alt="Carnival City"
-          class="customer-logo">
+          class="customer-logo" data-src="/customers/Carnival_City_Gradient_Gold__Blue_Logo-315x170.png">
       </div>
       <div class="customer-card">
-        <img src="/customers/eec-LOGO.png" alt="EEC" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/eec-LOGO.png" alt="EEC" class="customer-logo" data-src="/customers/eec-LOGO.png">
       </div>
       <div class="customer-card">
-        <img src="/customers/ekurhuleni-municipality_orig.jpg" alt="Ekurhuleni Municipality" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/ekurhuleni-municipality_orig.jpg" alt="Ekurhuleni Municipality" class="customer-logo" data-src="/customers/ekurhuleni-municipality_orig.jpg">
       </div>
       <div class="customer-card">
-        <img src="/customers/EKURHULENI.jpg" alt="City of Ekurhuleni" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/EKURHULENI.jpg" alt="City of Ekurhuleni" class="customer-logo" data-src="/customers/EKURHULENI.jpg">
       </div>
       <div class="customer-card">
-        <img src="/customers/Eluthandweni.jpg" alt="Eluthandweni" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/Eluthandweni.jpg" alt="Eluthandweni" class="customer-logo" data-src="/customers/Eluthandweni.jpg">
       </div>
       <div class="customer-card">
-        <img src="/customers/FNB-Logo-New.png" alt="First National Bank (FNB)" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/FNB-Logo-New.png" alt="First National Bank (FNB)" class="customer-logo" data-src="/customers/FNB-Logo-New.png">
       </div>
       <div class="customer-card">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
         <img src="/customers/Gauteng_Department_of_Education_(logo).png" alt="Gauteng Department of Education"
-          class="customer-logo">
+          class="customer-logo" data-src="/customers/Gauteng_Department_of_Education_(logo).png">
       </div>
       <div class="customer-card">
-        <img src="/customers/Kasie-logo.jpg" alt="Kasie" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/Kasie-logo.jpg" alt="Kasie" class="customer-logo" data-src="/customers/Kasie-logo.jpg">
       </div>
       <div class="customer-card">
-        <img src="/customers/LEBANO.png" alt="Lebano" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/LEBANO.png" alt="Lebano" class="customer-logo" data-src="/customers/LEBANO.png">
       </div>
       <div class="customer-card">
-        <img src="/customers/MQA.png" alt="MQA" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/MQA.png" alt="MQA" class="customer-logo" data-src="/customers/MQA.png">
       </div>
       <div class="customer-card">
-        <img src="/customers/SAB.webp" alt="South African Breweries (SAB)" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/SAB.webp" alt="South African Breweries (SAB)" class="customer-logo" data-src="/customers/SAB.webp">
       </div>
       <div class="customer-card">
-        <img src="/customers/THIKO.png" alt="Thiko" class="customer-logo">
+        <div class="image-placeholder"></div>
+        <div class="loading-spinner"></div>
+        <img src="/customers/THIKO.png" alt="Thiko" class="customer-logo" data-src="/customers/THIKO.png">
       </div>
 
 
@@ -665,6 +766,73 @@
     // API Configuration
     const API_BASE_URL = '';
 
+    // Enhanced image loading with progressive loading
+    function loadImageWithProgress(img, src) {
+      return new Promise((resolve, reject) => {
+        // Create a new image to load
+        const newImg = new Image();
+        
+        // Set up loading handlers
+        newImg.onload = () => {
+          // Set the actual image source
+          img.src = src;
+          img.classList.add('loaded');
+          resolve(img);
+        };
+        
+        newImg.onerror = () => {
+          reject(new Error(`Failed to load image: ${src}`));
+        };
+        
+        // Start loading
+        newImg.src = src;
+      });
+    }
+
+    // Progressive image loading
+    function loadImagesProgressively() {
+      const images = document.querySelectorAll('img[data-src]');
+      
+      // Create an Intersection Observer to load images when they enter the viewport
+      const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            const src = img.getAttribute('data-src');
+            const container = img.parentElement;
+            const placeholder = container.querySelector('.image-placeholder');
+            const spinner = container.querySelector('.loading-spinner');
+            
+            // Load the image
+            loadImageWithProgress(img, src)
+              .then(() => {
+                // Image loaded successfully
+                if (placeholder) placeholder.style.display = 'none';
+                if (spinner) spinner.style.display = 'none';
+              })
+              .catch(error => {
+                console.error('Error loading image:', error);
+                // Handle error - maybe show a placeholder image
+                if (placeholder) placeholder.style.display = 'none';
+                if (spinner) spinner.style.display = 'none';
+                img.alt = 'Failed to load image';
+              });
+            
+            // Stop observing this image
+            imageObserver.unobserve(img);
+          }
+        });
+      }, {
+        rootMargin: '50px 0px', // Start loading when image is 50px from viewport
+        threshold: 0.01
+      });
+      
+      // Observe all images with data-src attribute
+      images.forEach(img => {
+        imageObserver.observe(img);
+      });
+    }
+
     // API Helper Function
     async function apiCall(endpoint, options = {}) {
       try {
@@ -795,37 +963,6 @@
       statsObserver.observe(statsSection);
     }
 
-    // Load Featured Video from API
-    async function loadFeaturedVideo() {
-      try {
-        const response = await apiCall('/api/featured-video');
-        if (response && response.data) {
-          const video = response.data;
-          const iframe = document.getElementById('featuredVideoIframe');
-          const description = document.getElementById('featuredVideoDescription');
-          
-          if (video.url) {
-            // Convert YouTube URL to embed format if needed
-            let embedUrl = video.url;
-            if (embedUrl.includes('youtube.com/watch?v=')) {
-              const videoId = embedUrl.split('v=')[1].split('&')[0];
-              embedUrl = `https://www.youtube.com/embed/${videoId}`;
-            }
-            
-            iframe.src = embedUrl;
-            iframe.title = video.title || 'Featured Video';
-          }
-          
-          if (video.description) {
-            description.textContent = video.description;
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load featured video:', error);
-        // Keep default video if API fails
-      }
-    }
-
     // Load Home Portfolio Items from API
     async function loadHomePortfolioItems() {
       const grid = document.getElementById('homePortfolioGrid');
@@ -860,9 +997,13 @@
         portfolioItem.dataset.portfolioId = item.id || item._id || generateFallbackId();
         
         portfolioItem.innerHTML = `
+          <div class="image-placeholder"></div>
+          <div class="loading-spinner"></div>
           <img 
-            src="${item.image}" 
+            src="" 
+            data-src="${item.image}" 
             alt="${item.title}"
+            onerror="this.src='https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop'"
           />
           <div class="portfolio-overlay">
             <div class="portfolio-category">${item.category}</div>
@@ -891,6 +1032,9 @@
           cursorDot.style.transform = 'scale(1)';
         });
       });
+      
+      // Load portfolio images progressively
+      setTimeout(loadImagesProgressively, 100);
     }
 
     // Fallback portfolio items (used when API is not available)
@@ -962,8 +1106,11 @@
           item.image || 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop';
         
         portfolioItem.innerHTML = `
+          <div class="image-placeholder"></div>
+          <div class="loading-spinner"></div>
           <img 
-            src="${imageUrl}" 
+            src="" 
+            data-src="${imageUrl}" 
             alt="${item.title}"
             onerror="this.src='https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop'"
           />
@@ -984,6 +1131,9 @@
         
         gallery.appendChild(portfolioItem);
       });
+      
+      // Load portfolio images progressively
+      setTimeout(loadImagesProgressively, 100);
     }
 
     // Generate fallback ID for items without ID
@@ -1001,16 +1151,48 @@
     // Initialize the application
     async function initializeApp() {
       // Load dynamic content
-      await loadFeaturedVideo();
       await loadHomePortfolioItems();
       await loadPortfolioItems();
+      
+      // Load static images progressively
+      setTimeout(loadImagesProgressively, 100);
+      
+      // Load logo
+      const logo = document.querySelector('.logo-image');
+      if (logo) {
+        loadImageWithProgress(logo, logo.src)
+          .then(() => {
+            const placeholder = document.querySelector('.logo .image-placeholder');
+            const spinner = document.querySelector('.logo .loading-spinner');
+            if (placeholder) placeholder.style.display = 'none';
+            if (spinner) spinner.style.display = 'none';
+          })
+          .catch(error => {
+            console.error('Failed to load logo:', error);
+          });
+      }
+      
+      // Load about image
+      const aboutImage = document.querySelector('.about-image');
+      if (aboutImage) {
+        loadImageWithProgress(aboutImage, aboutImage.src)
+          .then(() => {
+            const placeholder = document.querySelector('.about-image-container .image-placeholder');
+            const spinner = document.querySelector('.about-image-container .loading-spinner');
+            if (placeholder) placeholder.style.display = 'none';
+            if (spinner) spinner.style.display = 'none';
+          })
+          .catch(error => {
+            console.error('Failed to load about image:', error);
+          });
+      }
     }
 
     // Start the application when DOM is loaded
     document.addEventListener('DOMContentLoaded', initializeApp);
   </script>
 
-<!-- 1. Add Social Media Links to Footer (Add before closing </body> in index.html) -->
+ 
 <footer class="site-footer">
   <div class="footer-content">
     <div class="footer-section">
@@ -1065,187 +1247,6 @@
 
 
 
-<!-- 3. CSS Styles (Add to style.css) -->
-<style>
-/* Footer Styles */
-.site-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 60px 60px 30px;
-  margin-top: 100px;
-}
-
-.footer-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 40px;
-  margin-bottom: 40px;
-}
-
-.footer-section h3 {
-  font-size: 1.5rem;
-  font-weight: 300;
-  letter-spacing: 2px;
-  margin-bottom: 15px;
-  color: var(--secondary);
-}
-
-.footer-section h4 {
-  font-size: 1.1rem;
-  font-weight: 300;
-  letter-spacing: 2px;
-  margin-bottom: 20px;
-  text-transform: uppercase;
-  color: var(--light);
-}
-
-.footer-section p {
-  opacity: 0.8;
-  line-height: 1.8;
-  margin-bottom: 10px;
-}
-
-.footer-links {
-  list-style: none;
-  padding: 0;
-}
-
-.footer-link {
-  background: none;
-  border: none;
-  color: var(--light);
-  opacity: 0.8;
-  padding: 8px 0;
-  display: block;
-  text-align: left;
-  transition: all 0.3s ease;
-  font-size: 14px;
-  letter-spacing: 1px;
-  cursor: pointer;
-}
-
-.footer-link:hover {
-  opacity: 1;
-  color: var(--secondary);
-  transform: translateX(5px);
-}
-
-.social-links {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.social-link {
-  width: 45px;
-  height: 45px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--light);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.social-link::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--secondary);
-  transform: scale(0);
-  transition: transform 0.3s ease;
-  border-radius: 50%;
-  z-index: -1;
-}
-
-.social-link:hover {
-  border-color: var(--secondary);
-  transform: translateY(-3px);
-}
-
-.social-link:hover::before {
-  transform: scale(1);
-}
-
-.social-link svg {
-  width: 20px;
-  height: 20px;
-  position: relative;
-  z-index: 1;
-}
-
-.footer-bottom {
-  text-align: center;
-  padding-top: 30px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  opacity: 0.6;
-  font-size: 14px;
-  letter-spacing: 1px;
-}
-
-/* Contact Page Social Links */
-.contact-social-links {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.contact-social-link {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 12px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  color: var(--light);
-  text-decoration: none;
-  transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.contact-social-link:hover {
-  border-color: var(--secondary);
-  background: rgba(78, 205, 196, 0.1);
-  transform: translateX(5px);
-}
-
-.contact-social-link svg {
-  flex-shrink: 0;
-}
-
-.contact-social-link span {
-  font-size: 1rem;
-  letter-spacing: 1px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .site-footer {
-    padding: 40px 30px 20px;
-  }
-  
-  .footer-content {
-    grid-template-columns: 1fr;
-    gap: 30px;
-  }
-  
-  .social-links {
-    justify-content: flex-start;
-  }
-  
-  .contact-social-links {
-    gap: 10px;
-  }
-  
-  .contact-social-link {
-    padding: 10px 15px;
-  }
-}
-</style>
 
 </body>
 

@@ -66,12 +66,54 @@
       transform: scale(1.02);
     }
     
+    /* Loading skeleton animation */
+    .gallery-item.loading::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        #1a1a1a 0%,
+        #2a2a2a 50%,
+        #1a1a1a 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      z-index: 1;
+    }
+    
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+    
     .gallery-item img,
     .gallery-item video {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.5s ease;
+      transition: opacity 0.4s ease, transform 0.5s ease;
+      opacity: 0;
+      position: relative;
+      z-index: 2;
+    }
+    
+    /* Show image/video when loaded */
+    .gallery-item.loaded img,
+    .gallery-item.loaded video {
+      opacity: 1;
+    }
+    
+    /* Remove loading skeleton when loaded */
+    .gallery-item.loaded::before {
+      display: none;
     }
     
     .gallery-item:hover img,
@@ -110,6 +152,7 @@
       pointer-events: none;
       opacity: 0.9;
       transition: all 0.3s ease;
+      z-index: 3;
     }
 
     .gallery-item:hover .video-play-overlay {
@@ -147,6 +190,7 @@
       height: 100%;
       background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.3) 100%);
       pointer-events: none;
+      z-index: 2;
     }
 
     .youtube-item img {
@@ -207,12 +251,38 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 400px;
+    }
+    
+    /* Lightbox loading spinner */
+    .lightbox-media-container.loading::before {
+      content: '';
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      z-index: 1;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
     
     .lightbox-image {
       max-width: 100%;
       max-height: 90vh;
       object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .lightbox-image.loaded {
+      opacity: 1;
     }
 
     .lightbox-video {
@@ -221,6 +291,14 @@
       width: auto;
       height: auto;
       background: #000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .lightbox-video.loaded {
+      opacity: 1;
     }
 
     .lightbox-youtube {
@@ -228,6 +306,8 @@
       height: 50.625vw;
       max-height: 90vh;
       max-width: calc(90vh * 16 / 9);
+      position: relative;
+      z-index: 2;
     }
     
     .lightbox-close {
@@ -656,7 +736,7 @@
       document.getElementById('galleryDescription').textContent = '';
     }
 
-    // Enhanced render gallery with video support
+    // Enhanced render gallery with proper loading
     function renderGallery() {
       if (!portfolioData) {
         showError('No portfolio data available');
@@ -680,40 +760,92 @@
       
       let mediaIndex = 0;
       
-      // Render images
+      // Render images with loading state
       images.forEach((imageUrl) => {
         const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item';
+        galleryItem.className = 'gallery-item loading';
         galleryItem.setAttribute('data-index', mediaIndex);
         galleryItem.setAttribute('data-type', 'image');
-        galleryItem.innerHTML = `
-          <img src="${imageUrl}" alt="${portfolioData.title} - Image ${mediaIndex + 1}" loading="lazy">
-          <div class="media-type-badge">📷 Photo</div>
-        `;
+        
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = `${portfolioData.title} - Image ${mediaIndex + 1}`;
+        img.loading = 'lazy';
+        
+        // Handle image load
+        img.addEventListener('load', () => {
+          galleryItem.classList.remove('loading');
+          galleryItem.classList.add('loaded');
+        });
+        
+        // Handle image error
+        img.addEventListener('error', () => {
+          galleryItem.classList.remove('loading');
+          galleryItem.classList.add('error');
+          img.style.display = 'none';
+          const errorDiv = document.createElement('div');
+          errorDiv.style.cssText = 'display: flex; align-items: center; justify-content: center; height: 100%; color: #ff6b6b; padding: 20px; text-align: center;';
+          errorDiv.textContent = 'Failed to load image';
+          galleryItem.appendChild(errorDiv);
+        });
+        
+        const badge = document.createElement('div');
+        badge.className = 'media-type-badge';
+        badge.textContent = '📷 Photo';
+        
+        galleryItem.appendChild(img);
+        galleryItem.appendChild(badge);
         galleryGrid.appendChild(galleryItem);
         mediaIndex++;
       });
       
-      // Render uploaded videos
+      // Render videos with loading state
       videos.forEach((videoUrl) => {
         const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item video-item';
+        galleryItem.className = 'gallery-item video-item loading';
         galleryItem.setAttribute('data-index', mediaIndex);
         galleryItem.setAttribute('data-type', 'video');
-        galleryItem.innerHTML = `
-          <video src="${videoUrl}" muted loop playsinline>
-            Your browser does not support the video tag.
-          </video>
-          <div class="video-play-overlay">
-            <svg width="60" height="60" viewBox="0 0 60 60" fill="white">
-              <circle cx="30" cy="30" r="30" fill="rgba(255,255,255,0.3)"/>
-              <polygon points="22,15 22,45 45,30" fill="white"/>
-            </svg>
-          </div>
-          <div class="media-type-badge">🎬 Video</div>
+        
+        const video = document.createElement('video');
+        video.src = videoUrl;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        
+        // Handle video load
+        video.addEventListener('loadeddata', () => {
+          galleryItem.classList.remove('loading');
+          galleryItem.classList.add('loaded');
+        });
+        
+        // Handle video error
+        video.addEventListener('error', () => {
+          galleryItem.classList.remove('loading');
+          galleryItem.classList.add('error');
+          video.style.display = 'none';
+          const errorDiv = document.createElement('div');
+          errorDiv.style.cssText = 'display: flex; align-items: center; justify-content: center; height: 100%; color: #ff6b6b; padding: 20px; text-align: center;';
+          errorDiv.textContent = 'Failed to load video';
+          galleryItem.appendChild(errorDiv);
+        });
+        
+        const playOverlay = document.createElement('div');
+        playOverlay.className = 'video-play-overlay';
+        playOverlay.innerHTML = `
+          <svg width="60" height="60" viewBox="0 0 60 60" fill="white">
+            <circle cx="30" cy="30" r="30" fill="rgba(255,255,255,0.3)"/>
+            <polygon points="22,15 22,45 45,30" fill="white"/>
+          </svg>
         `;
         
-        const video = galleryItem.querySelector('video');
+        const badge = document.createElement('div');
+        badge.className = 'media-type-badge';
+        badge.textContent = '🎬 Video';
+        
+        galleryItem.appendChild(video);
+        galleryItem.appendChild(playOverlay);
+        galleryItem.appendChild(badge);
+        
         galleryItem.addEventListener('mouseenter', () => {
           video.play().catch(e => console.log('Video play failed:', e));
         });
@@ -729,24 +861,44 @@
       // Render YouTube videos
       youtubeUrls.forEach((urlObj) => {
         const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item youtube-item';
+        galleryItem.className = 'gallery-item youtube-item loading';
         galleryItem.setAttribute('data-index', mediaIndex);
         galleryItem.setAttribute('data-type', 'youtube');
         galleryItem.setAttribute('data-url', urlObj.embedUrl);
         
         const videoId = urlObj.embedUrl.split('/embed/')[1]?.split('?')[0];
         
-        galleryItem.innerHTML = `
-          <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" alt="${portfolioData.title} - YouTube ${mediaIndex + 1}" loading="lazy">
-          <div class="video-play-overlay youtube-overlay">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <circle cx="30" cy="30" r="30" fill="rgba(255,0,0,0.8)"/>
-              <polygon points="22,15 22,45 45,30" fill="white"/>
-            </svg>
-          </div>
-          <div class="media-type-badge youtube-badge">📺 YouTube</div>
+        const img = document.createElement('img');
+        img.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        img.alt = `${portfolioData.title} - YouTube ${mediaIndex + 1}`;
+        img.loading = 'lazy';
+        
+        img.addEventListener('load', () => {
+          galleryItem.classList.remove('loading');
+          galleryItem.classList.add('loaded');
+        });
+        
+        img.addEventListener('error', () => {
+          galleryItem.classList.remove('loading');
+          galleryItem.classList.add('error');
+        });
+        
+        const playOverlay = document.createElement('div');
+        playOverlay.className = 'video-play-overlay youtube-overlay';
+        playOverlay.innerHTML = `
+          <svg width="60" height="60" viewBox="0 0 60 60">
+            <circle cx="30" cy="30" r="30" fill="rgba(255,0,0,0.8)"/>
+            <polygon points="22,15 22,45 45,30" fill="white"/>
+          </svg>
         `;
         
+        const badge = document.createElement('div');
+        badge.className = 'media-type-badge youtube-badge';
+        badge.textContent = '📺 YouTube';
+        
+        galleryItem.appendChild(img);
+        galleryItem.appendChild(playOverlay);
+        galleryItem.appendChild(badge);
         galleryGrid.appendChild(galleryItem);
         mediaIndex++;
       });
@@ -814,27 +966,72 @@
       }
       
       const mediaContainer = document.createElement('div');
-      mediaContainer.className = 'lightbox-media-container';
+      mediaContainer.className = 'lightbox-media-container loading';
       
       if (media.type === 'image') {
-        mediaContainer.innerHTML = `<img class="lightbox-image" src="${media.url}" alt="Portfolio Image">`;
+        const img = document.createElement('img');
+        img.className = 'lightbox-image';
+        img.src = media.url;
+        img.alt = 'Portfolio Image';
+        
+        img.addEventListener('load', () => {
+          mediaContainer.classList.remove('loading');
+          img.classList.add('loaded');
+        });
+        
+        img.addEventListener('error', () => {
+          mediaContainer.classList.remove('loading');
+          const errorDiv = document.createElement('div');
+          errorDiv.style.cssText = 'color: #ff6b6b; padding: 20px;';
+          errorDiv.textContent = 'Failed to load image';
+          mediaContainer.appendChild(errorDiv);
+        });
+        
+        mediaContainer.appendChild(img);
       } else if (media.type === 'video') {
-        mediaContainer.innerHTML = `
-          <video class="lightbox-video" controls autoplay>
-            <source src="${media.url}" type="video/mp4">
-            Your browser does not support the video tag.
-          </video>
-        `;
+        const video = document.createElement('video');
+        video.className = 'lightbox-video';
+        video.controls = true;
+        video.autoplay = true;
+        
+        const source = document.createElement('source');
+        source.src = media.url;
+        source.type = 'video/mp4';
+        
+        video.appendChild(source);
+        
+        video.addEventListener('loadeddata', () => {
+          mediaContainer.classList.remove('loading');
+          video.classList.add('loaded');
+        });
+        
+        video.addEventListener('error', () => {
+          mediaContainer.classList.remove('loading');
+          const errorDiv = document.createElement('div');
+          errorDiv.style.cssText = 'color: #ff6b6b; padding: 20px;';
+          errorDiv.textContent = 'Failed to load video';
+          mediaContainer.appendChild(errorDiv);
+        });
+        
+        mediaContainer.appendChild(video);
       } else if (media.type === 'youtube') {
-        mediaContainer.innerHTML = `
-          <iframe 
-            class="lightbox-youtube"
-            src="${media.url}?autoplay=1" 
-            frameborder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen>
-          </iframe>
-        `;
+        const iframe = document.createElement('iframe');
+        iframe.className = 'lightbox-youtube';
+        iframe.src = `${media.url}?autoplay=1`;
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        
+        iframe.addEventListener('load', () => {
+          mediaContainer.classList.remove('loading');
+        });
+        
+        // YouTube iframes typically load quickly, remove loading after a short delay as fallback
+        setTimeout(() => {
+          mediaContainer.classList.remove('loading');
+        }, 1000);
+        
+        mediaContainer.appendChild(iframe);
       }
       
       lightboxContent.insertBefore(mediaContainer, lightboxContent.firstChild);
