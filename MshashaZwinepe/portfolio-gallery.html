@@ -66,14 +66,16 @@
       transform: scale(1.02);
     }
     
-    .gallery-item img {
+    .gallery-item img,
+    .gallery-item video {
       width: 100%;
       height: 100%;
       object-fit: cover;
       transition: transform 0.5s ease;
     }
     
-    .gallery-item:hover img {
+    .gallery-item:hover img,
+    .gallery-item:hover video {
       transform: scale(1.1);
     }
     
@@ -97,6 +99,63 @@
     .back-button:hover {
       background: var(--primary);
       border-color: var(--primary);
+    }
+
+    /* Video and YouTube specific styles */
+    .video-play-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0.9;
+      transition: all 0.3s ease;
+    }
+
+    .gallery-item:hover .video-play-overlay {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    .youtube-overlay circle {
+      fill: rgba(255, 0, 0, 0.8) !important;
+    }
+
+    .media-type-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .youtube-badge {
+      background: rgba(255, 0, 0, 0.8);
+    }
+
+    .video-item::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.3) 100%);
+      pointer-events: none;
+    }
+
+    .youtube-item img {
+      filter: brightness(0.9);
+      transition: filter 0.3s ease;
+    }
+
+    .youtube-item:hover img {
+      filter: brightness(1);
     }
     
     /* Loading state */
@@ -140,11 +199,35 @@
       max-width: 90%;
       max-height: 90%;
     }
+
+    .lightbox-media-container {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     
     .lightbox-image {
       max-width: 100%;
       max-height: 90vh;
       object-fit: contain;
+    }
+
+    .lightbox-video {
+      max-width: 100%;
+      max-height: 90vh;
+      width: auto;
+      height: auto;
+      background: #000;
+    }
+
+    .lightbox-youtube {
+      width: 90vw;
+      height: 50.625vw;
+      max-height: 90vh;
+      max-width: calc(90vh * 16 / 9);
     }
     
     .lightbox-close {
@@ -201,6 +284,59 @@
       font-size: 14px;
       letter-spacing: 1px;
     }
+
+    /* Hamburger Menu Styles */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: space-around;
+      width: 30px;
+      height: 25px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      z-index: 1001;
+      position: relative;
+    }
+    
+    .hamburger span {
+      width: 100%;
+      height: 3px;
+      background: var(--light);
+      transition: all 0.3s ease;
+      border-radius: 3px;
+    }
+    
+    .hamburger.active span:nth-child(1) {
+      transform: rotate(45deg) translate(8px, 8px);
+    }
+    
+    .hamburger.active span:nth-child(2) {
+      opacity: 0;
+    }
+    
+    .hamburger.active span:nth-child(3) {
+      transform: rotate(-45deg) translate(7px, -7px);
+    }
+
+    .nav-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .nav-overlay.active {
+      display: block;
+      opacity: 1;
+    }
     
     @media (max-width: 768px) {
       .gallery-header {
@@ -216,6 +352,84 @@
         top: 90px;
         left: 30px;
         padding: 10px 20px;
+      }
+
+      nav {
+        padding: 20px 30px;
+      }
+      
+      .hamburger {
+        display: flex;
+      }
+      
+      .nav-links {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 70%;
+        max-width: 300px;
+        height: 100vh;
+        background: rgba(10, 10, 10, 0.98);
+        backdrop-filter: blur(20px);
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 30px;
+        padding: 60px 20px;
+        transition: right 0.3s cubic-bezier(0.43, 0.13, 0.23, 0.96);
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 1000;
+      }
+      
+      .nav-links.active {
+        right: 0;
+      }
+      
+      .nav-links li {
+        width: 100%;
+        text-align: center;
+        opacity: 0;
+        transform: translateX(50px);
+        transition: all 0.3s ease;
+      }
+      
+      .nav-links.active li {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      
+      .nav-links.active li:nth-child(1) { transition-delay: 0.1s; }
+      .nav-links.active li:nth-child(2) { transition-delay: 0.15s; }
+      .nav-links.active li:nth-child(3) { transition-delay: 0.2s; }
+      .nav-links.active li:nth-child(4) { transition-delay: 0.25s; }
+      .nav-links.active li:nth-child(5) { transition-delay: 0.3s; }
+      .nav-links.active li:nth-child(6) { transition-delay: 0.35s; }
+      
+      .nav-link {
+        width: 100%;
+        padding: 15px 20px;
+        font-size: 16px;
+        display: block;
+      }
+
+      .lightbox-youtube {
+        width: 95vw;
+        height: 53.4375vw;
+      }
+      
+      .media-type-badge {
+        font-size: 10px;
+        padding: 4px 10px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .nav-links {
+        width: 80%;
+      }
+      
+      .logo-image {
+        width: 8vh !important;
       }
     }
   </style>
@@ -245,7 +459,16 @@
       <div class="logo">
         <img src="/logo.png" alt="Mshasha Zwinepe Logo" class="logo-image" style="width: 12vh;">
       </div>
-      <ul class="nav-links">
+      
+      <!-- Hamburger Menu Button -->
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      
+      <!-- Navigation Links -->
+      <ul class="nav-links" id="navLinks">
         <li><a href="index.html" class="nav-link">Home</a></li>
         <li><a href="index.html#portfolio" class="nav-link">Portfolio</a></li>
         <li><a href="index.html#about" class="nav-link">About</a></li>
@@ -255,9 +478,6 @@
       </ul>
     </div>
   </nav>
-
-  <!-- Back Button -->
-  <button class="back-button" onclick="window.history.back()">← Back</button>
   
   <!-- Gallery Header -->
   <section class="gallery-header">
@@ -266,14 +486,14 @@
   </section>
 
   <!-- Loading State -->
-  <div class="loading" id="loadingState">Loading portfolio images...</div>
+  <div class="loading" id="loadingState">Loading portfolio media...</div>
 
   <!-- Error Message -->
   <div class="error-message" id="errorMessage" style="display: none;"></div>
 
   <!-- Gallery Grid -->
   <div class="gallery-grid" id="galleryGrid" style="display: none;">
-    <!-- Images will be populated by JavaScript -->
+    <!-- Media will be populated by JavaScript -->
   </div>
 
   <!-- Lightbox Modal -->
@@ -282,7 +502,6 @@
     <button class="lightbox-nav lightbox-prev" id="lightboxPrev">‹</button>
     <button class="lightbox-nav lightbox-next" id="lightboxNext">›</button>
     <div class="lightbox-content">
-      <img class="lightbox-image" id="lightboxImage" src="" alt="">
       <div class="lightbox-counter" id="lightboxCounter">1 / 0</div>
     </div>
   </div>
@@ -299,7 +518,7 @@
   <script type="module" src="./src/particles.js"></script>
 
   <script>
-    // Custom cursor (same as main page)
+    // Custom cursor
     const cursor = document.querySelector('.camera-cursor');
     const cursorDot = document.querySelector('.cursor-dot');
 
@@ -310,8 +529,61 @@
       cursorDot.style.top = (e.clientY - 4) + 'px';
     });
 
+    // Mobile Menu Toggle
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('navLinks');
+    let navOverlay = null;
+    
+    function createOverlay() {
+      if (!navOverlay) {
+        navOverlay = document.createElement('div');
+        navOverlay.className = 'nav-overlay';
+        document.body.appendChild(navOverlay);
+        navOverlay.addEventListener('click', closeMobileMenu);
+      }
+    }
+    
+    function openMobileMenu() {
+      createOverlay();
+      hamburger.classList.add('active');
+      navLinks.classList.add('active');
+      navOverlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeMobileMenu() {
+      hamburger.classList.remove('active');
+      navLinks.classList.remove('active');
+      if (navOverlay) {
+        navOverlay.classList.remove('active');
+      }
+      document.body.style.overflow = 'auto';
+    }
+    
+    hamburger.addEventListener('click', () => {
+      if (navLinks.classList.contains('active')) {
+        closeMobileMenu();
+      } else {
+        openMobileMenu();
+      }
+    });
+    
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          closeMobileMenu();
+        }
+      });
+    });
+    
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        closeMobileMenu();
+      }
+    });
+
     // Add hover effect to clickable elements
-    document.querySelectorAll('button, a, .gallery-item').forEach(elem => {
+    document.querySelectorAll('button, a').forEach(elem => {
       elem.addEventListener('mouseenter', () => {
         cursor.style.transform = 'scale(1.5)';
         cursorDot.style.transform = 'scale(2)';
@@ -335,9 +607,9 @@
     // Get portfolio item ID from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const portfolioId = urlParams.get('id');
-
-    // Portfolio data variable
     let portfolioData = null;
+    let allMedia = [];
+    let currentImageIndex = 0;
 
     // Fetch portfolio item from API
     async function fetchPortfolioItem() {
@@ -369,67 +641,126 @@
       }
     }
 
-    // Show loading state
     function showLoading() {
       document.getElementById('loadingState').style.display = 'flex';
       document.getElementById('errorMessage').style.display = 'none';
       document.getElementById('galleryGrid').style.display = 'none';
     }
 
-    // Show error message
     function showError(message) {
       document.getElementById('loadingState').style.display = 'none';
       document.getElementById('errorMessage').style.display = 'block';
       document.getElementById('errorMessage').textContent = message;
       document.getElementById('galleryGrid').style.display = 'none';
-      
-      // Update header to show error state
       document.getElementById('galleryTitle').textContent = 'Error';
       document.getElementById('galleryDescription').textContent = '';
     }
 
-    // Render gallery with fetched data
+    // Enhanced render gallery with video support
     function renderGallery() {
       if (!portfolioData) {
         showError('No portfolio data available');
         return;
       }
 
-      // Update header
       document.getElementById('galleryTitle').textContent = portfolioData.title;
       document.getElementById('galleryDescription').textContent = portfolioData.description;
 
-      // Render images
-      const galleryGrid = document.getElementById('galleryGrid');
-      const images = portfolioData.images;
+      const images = portfolioData.images || [];
+      const videos = portfolioData.videos || [];
+      const youtubeUrls = portfolioData.youtubeUrls || [];
       
+      const galleryGrid = document.getElementById('galleryGrid');
       galleryGrid.innerHTML = '';
       
-      if (!images || images.length === 0) {
-        showError('No images found in this portfolio item');
+      if (images.length === 0 && videos.length === 0 && youtubeUrls.length === 0) {
+        showError('No media found in this portfolio item');
         return;
       }
       
-      images.forEach((imageUrl, index) => {
+      let mediaIndex = 0;
+      
+      // Render images
+      images.forEach((imageUrl) => {
         const galleryItem = document.createElement('div');
         galleryItem.className = 'gallery-item';
-        galleryItem.setAttribute('data-index', index);
-        galleryItem.innerHTML = `<img src="${imageUrl}" alt="${portfolioData.title} - Image ${index + 1}" loading="lazy">`;
+        galleryItem.setAttribute('data-index', mediaIndex);
+        galleryItem.setAttribute('data-type', 'image');
+        galleryItem.innerHTML = `
+          <img src="${imageUrl}" alt="${portfolioData.title} - Image ${mediaIndex + 1}" loading="lazy">
+          <div class="media-type-badge">📷 Photo</div>
+        `;
         galleryGrid.appendChild(galleryItem);
+        mediaIndex++;
       });
       
-      // Show the gallery grid
+      // Render uploaded videos
+      videos.forEach((videoUrl) => {
+        const galleryItem = document.createElement('div');
+        galleryItem.className = 'gallery-item video-item';
+        galleryItem.setAttribute('data-index', mediaIndex);
+        galleryItem.setAttribute('data-type', 'video');
+        galleryItem.innerHTML = `
+          <video src="${videoUrl}" muted loop playsinline>
+            Your browser does not support the video tag.
+          </video>
+          <div class="video-play-overlay">
+            <svg width="60" height="60" viewBox="0 0 60 60" fill="white">
+              <circle cx="30" cy="30" r="30" fill="rgba(255,255,255,0.3)"/>
+              <polygon points="22,15 22,45 45,30" fill="white"/>
+            </svg>
+          </div>
+          <div class="media-type-badge">🎬 Video</div>
+        `;
+        
+        const video = galleryItem.querySelector('video');
+        galleryItem.addEventListener('mouseenter', () => {
+          video.play().catch(e => console.log('Video play failed:', e));
+        });
+        galleryItem.addEventListener('mouseleave', () => {
+          video.pause();
+          video.currentTime = 0;
+        });
+        
+        galleryGrid.appendChild(galleryItem);
+        mediaIndex++;
+      });
+      
+      // Render YouTube videos
+      youtubeUrls.forEach((urlObj) => {
+        const galleryItem = document.createElement('div');
+        galleryItem.className = 'gallery-item youtube-item';
+        galleryItem.setAttribute('data-index', mediaIndex);
+        galleryItem.setAttribute('data-type', 'youtube');
+        galleryItem.setAttribute('data-url', urlObj.embedUrl);
+        
+        const videoId = urlObj.embedUrl.split('/embed/')[1]?.split('?')[0];
+        
+        galleryItem.innerHTML = `
+          <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" alt="${portfolioData.title} - YouTube ${mediaIndex + 1}" loading="lazy">
+          <div class="video-play-overlay youtube-overlay">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="30" fill="rgba(255,0,0,0.8)"/>
+              <polygon points="22,15 22,45 45,30" fill="white"/>
+            </svg>
+          </div>
+          <div class="media-type-badge youtube-badge">📺 YouTube</div>
+        `;
+        
+        galleryGrid.appendChild(galleryItem);
+        mediaIndex++;
+      });
+      
       document.getElementById('loadingState').style.display = 'none';
       document.getElementById('errorMessage').style.display = 'none';
       document.getElementById('galleryGrid').style.display = 'grid';
       
-      // Add click event to gallery items
+      // Add click events
       document.querySelectorAll('.gallery-item').forEach(item => {
         item.addEventListener('click', () => {
           openLightbox(parseInt(item.getAttribute('data-index')));
         });
         
-        // Add hover effect for custom cursor
         item.addEventListener('mouseenter', () => {
           cursor.style.transform = 'scale(1.5)';
           cursorDot.style.transform = 'scale(2)';
@@ -442,57 +773,107 @@
     }
 
     // Lightbox functionality
-    let currentImageIndex = 0;
     const lightbox = document.getElementById('lightbox');
-    const lightboxImage = document.getElementById('lightboxImage');
     const lightboxClose = document.getElementById('lightboxClose');
     const lightboxPrev = document.getElementById('lightboxPrev');
     const lightboxNext = document.getElementById('lightboxNext');
-    const lightboxCounter = document.getElementById('lightboxCounter');
 
     function openLightbox(index) {
-      if (!portfolioData || !portfolioData.images) return;
+      if (!portfolioData) return;
+      
+      // Build combined media array
+      allMedia = [];
+      
+      (portfolioData.images || []).forEach(url => {
+        allMedia.push({ type: 'image', url: url });
+      });
+      
+      (portfolioData.videos || []).forEach(url => {
+        allMedia.push({ type: 'video', url: url });
+      });
+      
+      (portfolioData.youtubeUrls || []).forEach(urlObj => {
+        allMedia.push({ type: 'youtube', url: urlObj.embedUrl });
+      });
       
       currentImageIndex = index;
       updateLightbox();
       lightbox.classList.add('active');
-      document.body.style.overflow = 'hidden'; // Prevent scrolling
-    }
-
-    function closeLightbox() {
-      lightbox.classList.remove('active');
-      document.body.style.overflow = 'auto'; // Re-enable scrolling
+      document.body.style.overflow = 'hidden';
     }
 
     function updateLightbox() {
-      if (!portfolioData || !portfolioData.images) return;
+      if (!allMedia || allMedia.length === 0) return;
       
-      const images = portfolioData.images;
-      lightboxImage.src = images[currentImageIndex];
-      lightboxCounter.textContent = `${currentImageIndex + 1} / ${images.length}`;
+      const media = allMedia[currentImageIndex];
+      const lightboxContent = document.querySelector('.lightbox-content');
+      
+      const existingMedia = lightboxContent.querySelector('.lightbox-media-container');
+      if (existingMedia) {
+        existingMedia.remove();
+      }
+      
+      const mediaContainer = document.createElement('div');
+      mediaContainer.className = 'lightbox-media-container';
+      
+      if (media.type === 'image') {
+        mediaContainer.innerHTML = `<img class="lightbox-image" src="${media.url}" alt="Portfolio Image">`;
+      } else if (media.type === 'video') {
+        mediaContainer.innerHTML = `
+          <video class="lightbox-video" controls autoplay>
+            <source src="${media.url}" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        `;
+      } else if (media.type === 'youtube') {
+        mediaContainer.innerHTML = `
+          <iframe 
+            class="lightbox-youtube"
+            src="${media.url}?autoplay=1" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+          </iframe>
+        `;
+      }
+      
+      lightboxContent.insertBefore(mediaContainer, lightboxContent.firstChild);
+      document.getElementById('lightboxCounter').textContent = `${currentImageIndex + 1} / ${allMedia.length}`;
+    }
+
+    function closeLightbox() {
+      const videos = lightbox.querySelectorAll('video');
+      videos.forEach(v => {
+        v.pause();
+        v.currentTime = 0;
+      });
+      
+      const iframes = lightbox.querySelectorAll('iframe');
+      iframes.forEach(iframe => iframe.remove());
+      
+      lightbox.classList.remove('active');
+      document.body.style.overflow = 'auto';
     }
 
     function navigateLightbox(direction) {
-      if (!portfolioData || !portfolioData.images) return;
+      if (!allMedia || allMedia.length === 0) return;
       
-      const images = portfolioData.images;
       currentImageIndex += direction;
       
       if (currentImageIndex < 0) {
-        currentImageIndex = images.length - 1;
-      } else if (currentImageIndex >= images.length) {
+        currentImageIndex = allMedia.length - 1;
+      } else if (currentImageIndex >= allMedia.length) {
         currentImageIndex = 0;
       }
       
       updateLightbox();
     }
 
-    // Lightbox event listeners
+    // Event listeners
     lightboxClose.addEventListener('click', closeLightbox);
     lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
     lightboxNext.addEventListener('click', () => navigateLightbox(1));
 
-    // Keyboard navigation
     document.addEventListener('keydown', (e) => {
       if (!lightbox.classList.contains('active')) return;
       
@@ -509,14 +890,13 @@
       }
     });
 
-    // Close lightbox when clicking outside the image
     lightbox.addEventListener('click', (e) => {
       if (e.target === lightbox) {
         closeLightbox();
       }
     });
 
-    // Initialize the page
+    // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       fetchPortfolioItem();
     });

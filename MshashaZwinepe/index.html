@@ -26,23 +26,227 @@
   </div>
   <div class="cursor-dot"></div>
 
-  <!-- Navigation -->
-  <nav id="navbar">
-    <div class="nav-container">
-      <div class="logo">
-        <img src="/logo.png" alt="Mshasha Zwinepe Logo" class="logo-image" style="width: 12vh;">
-      </div>
-      <ul class="nav-links">
-        <li><button class="nav-link active" data-page="home">Home</button></li>
-        <li><button class="nav-link" data-page="portfolio">Portfolio</button></li>
-        <li><button class="nav-link" data-page="about">About</button></li>
-        <li><button class="nav-link" data-page="services">Services</button></li>
-        <li><button class="nav-link" data-page="customers">Our costomers</button></li>
-        <li><button class="nav-link" data-page="contact">Contact</button></li>
-      </ul>
+<!-- Replace the navigation section in index.html with this -->
+<nav id="navbar">
+  <div class="nav-container">
+    <div class="logo">
+      <img src="/logo.png" alt="Mshasha Zwinepe Logo" class="logo-image" style="width: 12vh;">
     </div>
-  </nav>
+    
+    <!-- Hamburger Menu Button -->
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    
+    <!-- Navigation Links -->
+    <ul class="nav-links" id="navLinks">
+      <li><button class="nav-link active" data-page="home">Home</button></li>
+      <li><button class="nav-link" data-page="portfolio">Portfolio</button></li>
+      <li><button class="nav-link" data-page="about">About</button></li>
+      <li><button class="nav-link" data-page="services">Services</button></li>
+      <li><button class="nav-link" data-page="customers">Our Customers</button></li>
+      <li><button class="nav-link" data-page="contact">Contact</button></li>
+    </ul>
+  </div>
+</nav>
 
+<style>
+  /* Hamburger Menu Styles */
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 25px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1001;
+    position: relative;
+  }
+  
+  .hamburger span {
+    width: 100%;
+    height: 3px;
+    background: var(--light);
+    transition: all 0.3s ease;
+    border-radius: 3px;
+  }
+  
+  .hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(8px, 8px);
+  }
+  
+  .hamburger.active span:nth-child(2) {
+    opacity: 0;
+  }
+  
+  .hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+  }
+  
+  /* Mobile Navigation Styles */
+  @media (max-width: 768px) {
+    nav {
+      padding: 20px 30px;
+    }
+    
+    .hamburger {
+      display: flex;
+    }
+    
+    .nav-links {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 70%;
+      max-width: 300px;
+      height: 100vh;
+      background: rgba(10, 10, 10, 0.98);
+      backdrop-filter: blur(20px);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      padding: 60px 20px;
+      transition: right 0.3s cubic-bezier(0.43, 0.13, 0.23, 0.96);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 1000;
+    }
+    
+    .nav-links.active {
+      right: 0;
+    }
+    
+    .nav-links li {
+      width: 100%;
+      text-align: center;
+      opacity: 0;
+      transform: translateX(50px);
+      transition: all 0.3s ease;
+    }
+    
+    .nav-links.active li {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    .nav-links.active li:nth-child(1) { transition-delay: 0.1s; }
+    .nav-links.active li:nth-child(2) { transition-delay: 0.15s; }
+    .nav-links.active li:nth-child(3) { transition-delay: 0.2s; }
+    .nav-links.active li:nth-child(4) { transition-delay: 0.25s; }
+    .nav-links.active li:nth-child(5) { transition-delay: 0.3s; }
+    .nav-links.active li:nth-child(6) { transition-delay: 0.35s; }
+    
+    .nav-link {
+      width: 100%;
+      padding: 15px 20px;
+      font-size: 16px;
+    }
+    
+    .nav-link::after {
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    
+    .nav-link:hover::after,
+    .nav-link.active::after {
+      width: 50%;
+    }
+  }
+  
+  /* Overlay for mobile menu */
+  .nav-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .nav-overlay.active {
+    display: block;
+    opacity: 1;
+  }
+  
+  @media (max-width: 480px) {
+    .nav-links {
+      width: 80%;
+    }
+    
+    .logo-image {
+      width: 8vh !important;
+    }
+  }
+</style>
+
+<script>
+  // Mobile Menu Toggle
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  let navOverlay = null;
+  
+  // Create overlay element
+  function createOverlay() {
+    if (!navOverlay) {
+      navOverlay = document.createElement('div');
+      navOverlay.className = 'nav-overlay';
+      document.body.appendChild(navOverlay);
+      
+      navOverlay.addEventListener('click', closeMobileMenu);
+    }
+  }
+  
+  function openMobileMenu() {
+    createOverlay();
+    hamburger.classList.add('active');
+    navLinks.classList.add('active');
+    navOverlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function closeMobileMenu() {
+    hamburger.classList.remove('active');
+    navLinks.classList.remove('active');
+    if (navOverlay) {
+      navOverlay.classList.remove('active');
+    }
+    document.body.style.overflow = 'auto';
+  }
+  
+  hamburger.addEventListener('click', () => {
+    if (navLinks.classList.contains('active')) {
+      closeMobileMenu();
+    } else {
+      openMobileMenu();
+    }
+  });
+  
+  // Close menu when clicking on a nav link
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        closeMobileMenu();
+      }
+    });
+  });
+  
+  // Close menu when window is resized to desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+      closeMobileMenu();
+    }
+  });
+</script>
   <!-- Home Page -->
   <div id="home" class="page active">
     <!-- Hero Section with Camera Animation -->
@@ -263,52 +467,188 @@
   </div>
 
   <!-- Contact Page -->
-  <div id="contact" class="page">
-    <div class="section-header" style="padding-top: 60px;">
-      <h2 class="section-title">Let's Connect</h2>
-    </div>
-    <div class="contact-container">
-      <div class="contact-info">
-        <h2>Get In Touch</h2>
-        <div class="contact-item">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path
-              d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-          </svg>
-          <span>+27 73 923 3855</span>
-        </div>
-        <div class="contact-item">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-            <polyline points="22,6 12,13 2,6" />
-          </svg>
-          <span>mshasha@photography.co.za</span>
-        </div>
-        <div class="contact-item">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <span>Germiston, Gauteng</span>
-        </div>
-      </div>
-      <form class="contact-form" id="contactForm">
-        <input type="text" name="name" placeholder="Your Name" class="form-input" required>
-        <input type="email" name="email" placeholder="Your Email" class="form-input" required>
-        <input type="tel" name="phone" placeholder="Your Phone" class="form-input">
-        <select name="service" class="form-input" required>
-          <option value="">Select a Service</option>
-          <option value="wedding">Wedding Photography</option>
-          <option value="portrait">Portrait Session</option>
-          <option value="event">Event Coverage</option>
-          <option value="commercial">Commercial Photography</option>
-        </select>
-        <textarea name="message" placeholder="Tell me about your vision..." class="form-input" rows="5"
-          required></textarea>
-        <button type="submit" class="submit-button">Send Message</button>
-      </form>
-    </div>
+
+  <!-- Contact Page -->
+<div id="contact" class="page">
+  <div class="section-header" style="padding-top: 60px;">
+    <h2 class="section-title">Let's Connect</h2>
   </div>
+  <div class="contact-container">
+    <div class="contact-info">
+      <h2>Get In Touch</h2>
+      <div class="contact-item">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path
+            d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+        </svg>
+        <span>+27 73 923 3855</span>
+      </div>
+      <div class="contact-item">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+          <polyline points="22,6 12,13 2,6" />
+        </svg>
+        <span>mshasha@photography.co.za</span>
+      </div>
+      <div class="contact-item">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span>Germiston, Gauteng</span>
+      </div>
+      
+      <div style="margin-top: 40px;">
+        <h3 style="font-size: 1.2rem; margin-bottom: 20px; color: var(--secondary); letter-spacing: 2px;">Quick Contact</h3>
+        <button onclick="openWhatsApp()" class="cta-button" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+          </svg>
+          Chat on WhatsApp
+        </button>
+      </div>
+    </div>
+    <form class="contact-form" id="contactForm">
+      <div id="formAlert" style="display: none; padding: 15px; margin-bottom: 20px; border-radius: 5px; font-size: 14px;"></div>
+      
+      <input type="text" name="name" placeholder="Your Name" class="form-input" required>
+      <input type="email" name="email" placeholder="Your Email" class="form-input" required>
+      <input type="tel" name="phone" placeholder="Your Phone" class="form-input">
+      <select name="service" class="form-input" required>
+        <option value="">Select a Service</option>
+        <option value="wedding">Wedding Photography</option>
+        <option value="portrait">Portrait Session</option>
+        <option value="event">Event Coverage</option>
+        <option value="commercial">Commercial Photography</option>
+        <option value="fashion">Fashion Photography</option>
+        <option value="music-video">Music Video</option>
+        <option value="film">Film Production</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea name="message" placeholder="Tell me about your vision..." class="form-input" rows="5"
+        required></textarea>
+      <button type="submit" class="submit-button" id="submitBtn">
+        <span id="submitText">Send Message</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // WhatsApp Configuration
+  const WHATSAPP_NUMBER = '27739233855'; // Your number without + and spaces
+
+  // Open WhatsApp with pre-filled message
+  function openWhatsApp() {
+    const message = encodeURIComponent('Hi Mshasha, I would like to inquire about your photography services.');
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+  }
+
+  // Contact form submission
+  document.getElementById('contactForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      service: formData.get('service'),
+      message: formData.get('message')
+    };
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+    const formAlert = document.getElementById('formAlert');
+    
+    try {
+      // Disable button and show loading
+      submitBtn.disabled = true;
+      submitText.textContent = 'Sending...';
+      
+      const response = await apiCall('/api/contacts', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      
+      if (response && response.success) {
+        // Show success message
+        formAlert.style.display = 'block';
+        formAlert.style.background = 'rgba(78, 205, 196, 0.2)';
+        formAlert.style.border = '1px solid var(--secondary)';
+        formAlert.style.color = 'var(--secondary)';
+        formAlert.textContent = response.message || 'Message sent successfully! We will get back to you soon.';
+        
+        // Reset form
+        e.target.reset();
+        
+        // Scroll to alert
+        formAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    } catch (error) {
+      // Show error message
+      formAlert.style.display = 'block';
+      formAlert.style.background = 'rgba(255, 107, 107, 0.2)';
+      formAlert.style.border = '1px solid var(--primary)';
+      formAlert.style.color = 'var(--primary)';
+      formAlert.textContent = error.message || 'Failed to send message. Please try again or contact us via WhatsApp.';
+      
+      // Scroll to alert
+      formAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } finally {
+      // Re-enable button
+      submitBtn.disabled = false;
+      submitText.textContent = 'Send Message';
+      
+      // Hide alert after 5 seconds
+      setTimeout(() => {
+        formAlert.style.display = 'none';
+      }, 5000);
+    }
+  });
+</script>
+
+<!-- WhatsApp Float Button - Only on Contact Page -->
+<a href="javascript:void(0)" onclick="openWhatsApp()" class="whatsapp-float" id="whatsappFloat" style="display: none;" title="Chat on WhatsApp">
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+  </svg>
+</a>
+
+<script>
+  // Show/hide WhatsApp float button based on active page
+  function updateWhatsAppVisibility() {
+    const contactPage = document.getElementById('contact');
+    const whatsappFloat = document.getElementById('whatsappFloat');
+    
+    if (contactPage && contactPage.classList.contains('active')) {
+      whatsappFloat.style.display = 'flex';
+    } else {
+      whatsappFloat.style.display = 'none';
+    }
+  }
+  
+  // Update the navigateTo function to control WhatsApp button
+  const originalNavigateTo = window.navigateTo;
+  window.navigateTo = function(pageName) {
+    originalNavigateTo(pageName);
+    updateWhatsAppVisibility();
+  };
+  
+  // Add to nav link clicks
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      setTimeout(updateWhatsAppVisibility, 100);
+    });
+  });
+  
+  // Initialize WhatsApp visibility on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    updateWhatsAppVisibility();
+  });
+</script>
+
 
   <!-- Three.js Import -->
   <script type="importmap">
@@ -669,6 +1009,244 @@
     // Start the application when DOM is loaded
     document.addEventListener('DOMContentLoaded', initializeApp);
   </script>
+
+<!-- 1. Add Social Media Links to Footer (Add before closing </body> in index.html) -->
+<footer class="site-footer">
+  <div class="footer-content">
+    <div class="footer-section">
+      <h3>Mshasha Zwinepe Photography</h3>
+      <p>Capturing moments, creating art.</p>
+    </div>
+    
+    <div class="footer-section">
+      <h4>Quick Links</h4>
+      <ul class="footer-links">
+        <li><button class="footer-link" onclick="navigateTo('home')">Home</button></li>
+        <li><button class="footer-link" onclick="navigateTo('portfolio')">Portfolio</button></li>
+        <li><button class="footer-link" onclick="navigateTo('about')">About</button></li>
+        <li><button class="footer-link" onclick="navigateTo('services')">Services</button></li>
+        <li><button class="footer-link" onclick="navigateTo('contact')">Contact</button></li>
+      </ul>
+    </div>
+    
+    <div class="footer-section">
+      <h4>Contact</h4>
+      <p>📞 +27 73 923 3855</p>
+      <p>📧 mshasha@photography.co.za</p>
+      <p>📍 Germiston, Gauteng</p>
+    </div>
+    
+    <div class="footer-section">
+      <h4>Follow Us</h4>
+      <div class="social-links">
+        <a href="https://www.youtube.com/@mshashazwinepe8942" target="_blank" rel="noopener noreferrer" class="social-link" title="YouTube">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+        </a>
+        <a href="https://www.instagram.com/mshasha_zwinepe/?hl=en" target="_blank" rel="noopener noreferrer" class="social-link" title="Instagram">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+          </svg>
+        </a>
+        <a href="https://www.facebook.com/mshasha.zwinepe.96/" target="_blank" rel="noopener noreferrer" class="social-link" title="Facebook">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer-bottom">
+    <p>&copy; 2025 Mshasha Zwinepe Photography. All rights reserved.</p>
+  </div>
+</footer>
+
+
+
+<!-- 3. CSS Styles (Add to style.css) -->
+<style>
+/* Footer Styles */
+.site-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 60px 60px 30px;
+  margin-top: 100px;
+}
+
+.footer-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.footer-section h3 {
+  font-size: 1.5rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  margin-bottom: 15px;
+  color: var(--secondary);
+}
+
+.footer-section h4 {
+  font-size: 1.1rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  color: var(--light);
+}
+
+.footer-section p {
+  opacity: 0.8;
+  line-height: 1.8;
+  margin-bottom: 10px;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-link {
+  background: none;
+  border: none;
+  color: var(--light);
+  opacity: 0.8;
+  padding: 8px 0;
+  display: block;
+  text-align: left;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.footer-link:hover {
+  opacity: 1;
+  color: var(--secondary);
+  transform: translateX(5px);
+}
+
+.social-links {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.social-link {
+  width: 45px;
+  height: 45px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--light);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.social-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--secondary);
+  transform: scale(0);
+  transition: transform 0.3s ease;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.social-link:hover {
+  border-color: var(--secondary);
+  transform: translateY(-3px);
+}
+
+.social-link:hover::before {
+  transform: scale(1);
+}
+
+.social-link svg {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 30px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0.6;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+/* Contact Page Social Links */
+.contact-social-links {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.contact-social-link {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  color: var(--light);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.contact-social-link:hover {
+  border-color: var(--secondary);
+  background: rgba(78, 205, 196, 0.1);
+  transform: translateX(5px);
+}
+
+.contact-social-link svg {
+  flex-shrink: 0;
+}
+
+.contact-social-link span {
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .site-footer {
+    padding: 40px 30px 20px;
+  }
+  
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .social-links {
+    justify-content: flex-start;
+  }
+  
+  .contact-social-links {
+    gap: 10px;
+  }
+  
+  .contact-social-link {
+    padding: 10px 15px;
+  }
+}
+</style>
+
 </body>
 
 </html>

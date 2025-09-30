@@ -8,18 +8,18 @@ import { handleFirestoreError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// Configure multer for file uploads (images and videos)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit for videos
   },
   fileFilter: (req, file, cb) => {
-    // Check if file is an image
-    if (file.mimetype.startsWith('image/')) {
+    // Check if file is an image or video
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed!'), false);
+      cb(new Error('Only image and video files are allowed!'), false);
     }
   }
 });
@@ -30,40 +30,61 @@ const handleMulterError = (error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: 'File too large. Maximum size is 5MB.'
+        message: 'File too large. Maximum size is 100MB.'
       });
     }
   }
   next(error);
 };
 
-// Image upload route
-router.post('/upload', upload.array('images', 10), handleMulterError, asyncHandler(async (req, res) => {
+// Helper function to convert YouTube URL to embed format
+function convertToEmbedUrl(url) {
+  if (!url) return null;
+  
+  // Already an embed URL
+  if (url.includes('/embed/')) {
+    return url;
+  }
+  
+  // Regular YouTube URL
+  if (url.includes('youtube.com/watch?v=')) {
+    const videoId = url.split('v=')[1].split('&')[0];
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  
+  // YouTube short URL
+  if (url.includes('youtu.be/')) {
+    const videoId = url.split('youtu.be/')[1].split('?')[0];
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  
+  return url;
+}
+
+// Media upload route (handles both images and videos)
+router.post('/upload', upload.array('media', 10), handleMulterError, asyncHandler(async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No images uploaded'
+        message: 'No media files uploaded'
       });
     }
 
     const uploadPromises = req.files.map(async (file) => {
       try {
-        // Create a unique filename
         const timestamp = Date.now();
         const randomString = Math.random().toString(36).substring(2, 15);
         const fileExtension = file.originalname.split('.').pop();
-        const filename = `portfolio/${timestamp}_${randomString}.${fileExtension}`;
+        const mediaType = file.mimetype.startsWith('image/') ? 'images' : 'videos';
+        const filename = `portfolio/${mediaType}/${timestamp}_${randomString}.${fileExtension}`;
         
-        // Create storage reference
         const storageRef = ref(storage, filename);
         
-        // Upload file to Firebase Storage
         const snapshot = await uploadBytes(storageRef, file.buffer, {
           contentType: file.mimetype
         });
 
-        // Get the download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
 
         return {
@@ -73,6 +94,7 @@ router.post('/upload', upload.array('images', 10), handleMulterError, asyncHandl
           url: downloadURL,
           size: file.size,
           contentType: file.mimetype,
+          mediaType: mediaType,
           uploadedAt: new Date().toISOString()
         };
       } catch (fileError) {
@@ -84,24 +106,21 @@ router.post('/upload', upload.array('images', 10), handleMulterError, asyncHandl
       }
     });
 
-    // Wait for all uploads to complete
     const uploadResults = await Promise.all(uploadPromises);
-
-    // Separate successful and failed uploads
     const successfulUploads = uploadResults.filter(result => result.success);
     const failedUploads = uploadResults.filter(result => !result.success);
 
     if (successfulUploads.length === 0) {
       return res.status(500).json({
         success: false,
-        message: 'All image uploads failed',
+        message: 'All media uploads failed',
         errors: failedUploads
       });
     }
 
     res.json({
       success: true,
-      message: `Successfully uploaded ${successfulUploads.length} image(s)`,
+      message: `Successfully uploaded ${successfulUploads.length} file(s)`,
       data: successfulUploads,
       ...(failedUploads.length > 0 && {
         warnings: {
@@ -115,19 +134,19 @@ router.post('/upload', upload.array('images', 10), handleMulterError, asyncHandl
     console.error('Upload error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error uploading images',
+      message: 'Error uploading media',
       error: error.message
     });
   }
 }));
 
-// Single image upload route
-router.post('/upload-single', upload.single('image'), handleMulterError, asyncHandler(async (req, res) => {
+// Single media upload route
+router.post('/upload-single', upload.single('media'), handleMulterError, asyncHandler(async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No image uploaded'
+        message: 'No media file uploaded'
       });
     }
 
@@ -135,17 +154,15 @@ router.post('/upload-single', upload.single('image'), handleMulterError, asyncHa
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const fileExtension = file.originalname.split('.').pop();
-    const filename = `portfolio/${timestamp}_${randomString}.${fileExtension}`;
+    const mediaType = file.mimetype.startsWith('image/') ? 'images' : 'videos';
+    const filename = `portfolio/${mediaType}/${timestamp}_${randomString}.${fileExtension}`;
     
-    // Create storage reference
     const storageRef = ref(storage, filename);
     
-    // Upload file to Firebase Storage
     const snapshot = await uploadBytes(storageRef, file.buffer, {
       contentType: file.mimetype
     });
 
-    // Get the download URL
     const downloadURL = await getDownloadURL(snapshot.ref);
     
     const uploadResult = {
@@ -154,12 +171,13 @@ router.post('/upload-single', upload.single('image'), handleMulterError, asyncHa
       url: downloadURL,
       size: file.size,
       contentType: file.mimetype,
+      mediaType: mediaType,
       uploadedAt: new Date().toISOString()
     };
 
     res.json({
       success: true,
-      message: 'Image uploaded successfully',
+      message: 'Media uploaded successfully',
       data: uploadResult
     });
 
@@ -167,7 +185,7 @@ router.post('/upload-single', upload.single('image'), handleMulterError, asyncHa
     console.error('Upload error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error uploading image',
+      message: 'Error uploading media',
       error: error.message
     });
   }
@@ -188,13 +206,11 @@ router.get('/', asyncHandler(async (req, res) => {
         ...doc.data()
       };
       
-      // Filter by category if specified
       if (!category || data.categoryId === category) {
         portfolio.push(data);
       }
     });
     
-    // Sort by creation date (newest first)
     portfolio.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
     res.json({
@@ -206,15 +222,27 @@ router.get('/', asyncHandler(async (req, res) => {
   }
 }));
 
-// Add portfolio item (updated to handle image URLs from upload)
+// Add portfolio item with media (images, videos, and YouTube URLs)
 router.post('/', asyncHandler(async (req, res) => {
   try {
-    const { categoryId, title, description, images } = req.body;
+    const { categoryId, title, description, images, videos, youtubeUrls } = req.body;
     
-    if (!categoryId || !title || !description || !images || images.length === 0) {
+    if (!categoryId || !title || !description) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required and at least one image must be provided'
+        message: 'Category ID, title, and description are required'
+      });
+    }
+    
+    // Verify at least one media type is provided
+    const hasMedia = (images && images.length > 0) || 
+                     (videos && videos.length > 0) || 
+                     (youtubeUrls && youtubeUrls.length > 0);
+    
+    if (!hasMedia) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one image, video, or YouTube URL must be provided'
       });
     }
     
@@ -227,12 +255,21 @@ router.post('/', asyncHandler(async (req, res) => {
       });
     }
     
+    // Process YouTube URLs to embed format
+    const processedYoutubeUrls = youtubeUrls ? 
+      youtubeUrls.map(url => ({
+        originalUrl: url,
+        embedUrl: convertToEmbedUrl(url)
+      })) : [];
+    
     const portfolioData = {
       categoryId,
       categoryName: categoryDoc.data().name,
       title,
       description,
-      images: Array.isArray(images) ? images : [images], // Ensure images is an array
+      images: Array.isArray(images) ? images : (images ? [images] : []),
+      videos: Array.isArray(videos) ? videos : (videos ? [videos] : []),
+      youtubeUrls: processedYoutubeUrls,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -257,7 +294,7 @@ router.post('/', asyncHandler(async (req, res) => {
 router.put('/:id', asyncHandler(async (req, res) => {
   try {
     const portfolioId = req.params.id;
-    const { title, description, images } = req.body;
+    const { title, description, images, videos, youtubeUrls } = req.body;
     
     const updateData = {
       updatedAt: new Date().toISOString()
@@ -266,6 +303,13 @@ router.put('/:id', asyncHandler(async (req, res) => {
     if (title) updateData.title = title;
     if (description) updateData.description = description;
     if (images) updateData.images = images;
+    if (videos) updateData.videos = videos;
+    if (youtubeUrls) {
+      updateData.youtubeUrls = youtubeUrls.map(url => ({
+        originalUrl: url,
+        embedUrl: convertToEmbedUrl(url)
+      }));
+    }
     
     await updateDoc(doc(db, 'portfolio', portfolioId), updateData);
     
@@ -277,7 +321,6 @@ router.put('/:id', asyncHandler(async (req, res) => {
     handleFirestoreError(error, res);
   }
 }));
-
 
 // Get specific portfolio item by ID
 router.get('/:id', asyncHandler(async (req, res) => {
@@ -309,6 +352,85 @@ router.get('/:id', asyncHandler(async (req, res) => {
     res.json({
       success: true,
       data: portfolioData
+    });
+  } catch (error) {
+    handleFirestoreError(error, res);
+  }
+}));
+
+// Delete specific media item from portfolio
+router.delete('/:id/media/:type/:index', asyncHandler(async (req, res) => {
+  try {
+    const portfolioId = req.params.id;
+    const mediaType = req.params.type; // 'images', 'videos', or 'youtubeUrls'
+    const mediaIndex = parseInt(req.params.index);
+    
+    if (isNaN(mediaIndex) || mediaIndex < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid media index'
+      });
+    }
+    
+    if (!['images', 'videos', 'youtubeUrls'].includes(mediaType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid media type. Must be images, videos, or youtubeUrls'
+      });
+    }
+    
+    const portfolioRef = doc(db, 'portfolio', portfolioId);
+    const portfolioDoc = await getDoc(portfolioRef);
+    
+    if (!portfolioDoc.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Portfolio item not found'
+      });
+    }
+    
+    const portfolioData = portfolioDoc.data();
+    const mediaArray = portfolioData[mediaType] || [];
+    
+    if (mediaIndex >= mediaArray.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Media index out of range'
+      });
+    }
+    
+    mediaArray.splice(mediaIndex, 1);
+    
+    // Check if all media arrays are empty
+    const images = mediaType === 'images' ? mediaArray : (portfolioData.images || []);
+    const videos = mediaType === 'videos' ? mediaArray : (portfolioData.videos || []);
+    const youtubeUrls = mediaType === 'youtubeUrls' ? mediaArray : (portfolioData.youtubeUrls || []);
+    
+    if (images.length === 0 && videos.length === 0 && youtubeUrls.length === 0) {
+      await deleteDoc(portfolioRef);
+      return res.json({
+        success: true,
+        message: 'Last media deleted. Portfolio item removed.',
+        deletedItem: true
+      });
+    }
+    
+    await updateDoc(portfolioRef, {
+      [mediaType]: mediaArray,
+      updatedAt: new Date().toISOString()
+    });
+    
+    res.json({
+      success: true,
+      message: `${mediaType.slice(0, -1)} deleted successfully`,
+      data: { 
+        id: portfolioId,
+        remainingMedia: {
+          images: images.length,
+          videos: videos.length,
+          youtubeUrls: youtubeUrls.length
+        }
+      }
     });
   } catch (error) {
     handleFirestoreError(error, res);

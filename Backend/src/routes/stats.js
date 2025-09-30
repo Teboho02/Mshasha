@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '../firebase.js';
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
 import asyncHandler from '../middleware/asyncHandler.js';
 import { handleFirestoreError } from '../middleware/errorHandler.js';
 
@@ -25,13 +25,24 @@ router.get('/', asyncHandler(async (req, res) => {
     const videoDoc = await getDoc(doc(db, 'settings', 'featured-video'));
     const hasFeaturedVideo = videoDoc.exists();
     
+    // Get contact messages count
+    const contactsSnapshot = await getDocs(collection(db, 'contacts'));
+    const contactsCount = contactsSnapshot.size;
+    
+    // Get unread messages count
+    const unreadQuery = query(collection(db, 'contacts'), where('status', '==', 'unread'));
+    const unreadSnapshot = await getDocs(unreadQuery);
+    const unreadCount = unreadSnapshot.size;
+    
     res.json({
       success: true,
       data: {
         categories: categoriesCount,
         portfolioItems: portfolioCount,
         homePortfolioItems: homePortfolioCount,
-        featuredVideos: hasFeaturedVideo ? 1 : 0
+        featuredVideos: hasFeaturedVideo ? 1 : 0,
+        totalMessages: contactsCount,
+        unreadMessages: unreadCount
       }
     });
   } catch (error) {

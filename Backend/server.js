@@ -11,6 +11,7 @@ import featuredVideoRoutes from './src/routes/featuredVideo.js';
 import homePortfolioRoutes from './src/routes/homePortfolio.js';
 import statsRoutes from './src/routes/stats.js';
 import healthRoutes from './src/routes/health.js';
+import contactsRoutes from './src/routes/contacts.js';
 
 // Import middleware
 import { globalErrorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
@@ -44,6 +45,7 @@ app.use('/api/featured-video', featuredVideoRoutes);
 app.use('/api/home-portfolio', homePortfolioRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/contacts', contactsRoutes);
 
 // Root API route
 app.get('/api', (req, res) => {
@@ -85,7 +87,7 @@ app.use(globalErrorHandler);
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📍 Environment: ${NODE_ENV}`);
+  console.log(`📝 Environment: ${NODE_ENV}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🌐 Frontend: ${fs.existsSync(FRONTEND_PATH) ? '✅ Available' : '❌ Not found'}`);
   console.log(`📁 Frontend path: ${FRONTEND_PATH}`);
