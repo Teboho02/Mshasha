@@ -346,35 +346,35 @@
 
             // Enhanced portfolio rendering with video support
             function renderPortfolioGallery(portfolioItems) {
-                const portfolioGallery = document.getElementById('portfolioGallery');
-                portfolioGallery.innerHTML = '';
+    const portfolioGallery = document.getElementById('portfolioGallery');
+    portfolioGallery.innerHTML = '';
 
-                if (!portfolioItems || portfolioItems.length === 0) {
-                    portfolioGallery.innerHTML = '<p style="opacity: 0.7; text-align: center; grid-column: 1 / -1;">No portfolio items found</p>';
-                    return;
-                }
+    if (!portfolioItems || portfolioItems.length === 0) {
+        portfolioGallery.innerHTML = '<p style="opacity: 0.7; text-align: center; grid-column: 1 / -1;">No portfolio items found</p>';
+        return;
+    }
 
-                portfolioItems.forEach((item, index) => {
-                    const galleryItem = document.createElement('div');
-                    galleryItem.className = 'gallery-item';
-                    galleryItem.style.cursor = 'pointer';
+    portfolioItems.forEach((item, index) => {
+        const galleryItem = document.createElement('div');
+        galleryItem.className = 'gallery-item';
+        galleryItem.style.cursor = 'pointer';
 
-                    // Determine thumbnail - prefer images, then videos, then YouTube
-                    let thumbnailHtml = '';
-                    if (item.images && item.images.length > 0) {
-                        thumbnailHtml = `<img src="${item.images[0]}" alt="${item.title}" style="width: 100%; height: 200px; object-fit: cover;">`;
-                    } else if (item.videos && item.videos.length > 0) {
-                        thumbnailHtml = `<video src="${item.videos[0]}" style="width: 100%; height: 200px; object-fit: cover;" muted></video>`;
-                    } else if (item.youtubeUrls && item.youtubeUrls.length > 0) {
-                        const videoId = item.youtubeUrls[0].embedUrl.split('/embed/')[1];
-                        thumbnailHtml = `<img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" alt="${item.title}" style="width: 100%; height: 200px; object-fit: cover;">`;
-                    } else {
-                        thumbnailHtml = '<div style="width: 100%; height: 200px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5);">No Media</div>';
-                    }
+        // Determine thumbnail - prefer images, then videos, then YouTube
+        let thumbnailHtml = '';
+        if (item.images && item.images.length > 0) {
+            thumbnailHtml = `<img src="${item.images[0]}" alt="${item.title}" style="width: 100%; height: 200px; object-fit: cover;">`;
+        } else if (item.videos && item.videos.length > 0) {
+            thumbnailHtml = `<video src="${item.videos[0]}" style="width: 100%; height: 200px; object-fit: cover;" muted></video>`;
+        } else if (item.youtubeUrls && item.youtubeUrls.length > 0) {
+            const videoId = item.youtubeUrls[0].embedUrl.split('/embed/')[1];
+            thumbnailHtml = `<img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" alt="${item.title}" style="width: 100%; height: 200px; object-fit: cover;">`;
+        } else {
+            thumbnailHtml = '<div style="width: 100%; height: 200px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5);">No Media</div>';
+        }
 
-                    const totalMedia = (item.images?.length || 0) + (item.videos?.length || 0) + (item.youtubeUrls?.length || 0);
+        const totalMedia = (item.images?.length || 0) + (item.videos?.length || 0) + (item.youtubeUrls?.length || 0);
 
-                    galleryItem.innerHTML = `
+        galleryItem.innerHTML = `
             ${thumbnailHtml}
             <h4>${item.title}</h4>
             <p>${item.description}</p>
@@ -388,106 +388,35 @@
             </div>
         `;
 
-                    galleryItem.addEventListener('click', () => {
-                        openMediaModal(item);
-                    });
+        galleryItem.addEventListener('click', () => {
+            openMediaModal(item);
+        });
 
-                    portfolioGallery.appendChild(galleryItem);
-                });
-            }
+        portfolioGallery.appendChild(galleryItem);
+    });
+}
 
             // Enhanced modal with video playback
-            function openMediaModal(item) {
-                const modal = document.createElement('div');
-                modal.className = 'image-modal';
+            
+            async function deleteMedia(itemId, mediaType, mediaIndex, event) {
+    if (event) event.stopPropagation();
 
-                let mediaHtml = '';
+    if (!confirm(`Are you sure you want to delete this ${mediaType.slice(0, -1)}?`)) {
+        return;
+    }
 
-                // Add images
-                if (item.images && item.images.length > 0) {
-                    mediaHtml += '<h5 style="color: var(--secondary); margin: 20px 0 10px 0;">Images</h5>';
-                    mediaHtml += '<div class="modal-images-grid">';
-                    item.images.forEach((img, idx) => {
-                        mediaHtml += `
-                <div class="modal-image-item">
-                    <img src="${img}" alt="${item.title} - Image ${idx + 1}">
-                    <button class="btn-delete-image" onclick="deleteMedia('${item.id}', 'images', ${idx}, event)">Delete</button>
-                </div>
-            `;
-                    });
-                    mediaHtml += '</div>';
-                }
+    try {
+        await apiCall(`/api/portfolio/${itemId}/media/${mediaType}/${mediaIndex}`, {
+            method: 'DELETE'
+        });
 
-                // Add uploaded videos
-                if (item.videos && item.videos.length > 0) {
-                    mediaHtml += '<h5 style="color: var(--secondary); margin: 20px 0 10px 0;">Uploaded Videos</h5>';
-                    mediaHtml += '<div class="modal-images-grid">';
-                    item.videos.forEach((video, idx) => {
-                        mediaHtml += `
-                <div class="modal-image-item">
-                    <video controls style="width: 100%; height: 300px; object-fit: cover;">
-                        <source src="${video}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                    <button class="btn-delete-image" onclick="deleteMedia('${item.id}', 'videos', ${idx}, event)">Delete</button>
-                </div>
-            `;
-                    });
-                    mediaHtml += '</div>';
-                }
-
-                // Add YouTube videos
-                if (item.youtubeUrls && item.youtubeUrls.length > 0) {
-                    mediaHtml += '<h5 style="color: var(--secondary); margin: 20px 0 10px 0;">YouTube Videos</h5>';
-                    mediaHtml += '<div class="modal-images-grid">';
-                    item.youtubeUrls.forEach((urlObj, idx) => {
-                        mediaHtml += `
-                <div class="modal-image-item">
-                    <div style="position: relative; padding-bottom: 56.25%; height: 0;">
-                        <iframe 
-                            src="${urlObj.embedUrl}" 
-                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen>
-                        </iframe>
-                    </div>
-                    <button class="btn-delete-image" onclick="deleteMedia('${item.id}', 'youtubeUrls', ${idx}, event)">Delete</button>
-                </div>
-            `;
-                    });
-                    mediaHtml += '</div>';
-                }
-
-                if (!mediaHtml) {
-                    mediaHtml = '<p style="opacity: 0.7; text-align: center;">No media found</p>';
-                }
-
-                modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>${item.title}</h3>
-                <button class="modal-close" onclick="closeImageModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 20px; opacity: 0.8;">${item.description}</p>
-                ${mediaHtml}
-            </div>
-            <div class="modal-footer">
-                <button class="btn-delete" onclick="deletePortfolioItem('${item.id}'); closeImageModal();">Delete Entire Item</button>
-                <button class="btn-secondary" onclick="closeImageModal()">Close</button>
-            </div>
-        </div>
-    `;
-
-                document.body.appendChild(modal);
-
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        closeImageModal();
-                    }
-                });
-            }
+        closeImageModal();
+        await loadPortfolioItems();
+        showAlert(`${mediaType.slice(0, -1)} deleted successfully!`, 'success');
+    } catch (error) {
+        showAlert(error.message || `Failed to delete ${mediaType.slice(0, -1)}`, 'error');
+    }
+}
 
             // Delete media function
             async function deleteMedia(itemId, mediaType, mediaIndex, event) {
@@ -1347,32 +1276,31 @@
             }, 5000);
         }
 
-        // Initialize the application
-        async function init() {
-            try {
-                // Setup file previews
-                setupFilePreview('photoFile', 'filePreview');
-                setupFilePreview('homeImageFile', 'homeImagePreview');
+      async function init() {
+    try {
+        // Setup file previews
+        setupFilePreview('photoFile', 'filePreview');
+        setupFilePreview('homeImageFile', 'homeImagePreview');
 
-                // Test API connection
-                await apiCall('/');
+        // Remove or fix this line - it's causing the error
+        // await apiCall('/');  // <-- DELETE THIS LINE
 
-                // Load initial data
-                await Promise.all([
-                    updateCategorySelects(),
-                    loadCategories(),
-                    loadPortfolioItems(),
-                    loadFeaturedVideo(),
-                    loadHomePortfolioItems(),
-                    updateStats()
-                ]);
+        // Load initial data
+        await Promise.all([
+            updateCategorySelects(),
+            loadCategories(),
+            loadPortfolioItems(),
+            loadFeaturedVideo(),
+            loadHomePortfolioItems(),
+            updateStats()
+        ]);
 
-                showAlert('Admin panel connected successfully! Images will be stored in Firebase Storage.', 'success');
-            } catch (error) {
-                showAlert('Failed to connect to API. Please ensure the server is running on localhost:3000', 'error');
-                console.error('Initialization error:', error);
-            }
-        }
+        showAlert('Admin panel connected successfully! Images will be stored in Firebase Storage.', 'success');
+    } catch (error) {
+        showAlert('Failed to connect to API. Please ensure the server is running on localhost:3000', 'error');
+        console.error('Initialization error:', error);
+    }
+}
 
         // Start the application when the page loads
         window.addEventListener('DOMContentLoaded', init);
