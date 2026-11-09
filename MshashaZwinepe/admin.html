@@ -781,6 +781,8 @@
             } else if (sectionName === 'home-portfolio') {
                 updateCategorySelects();
                 loadHomePortfolioItems();
+            } else if (sectionName === 'messages') {
+                loadMessages();
             }
         }
 
@@ -1259,9 +1261,138 @@
                         <div class="stat-number">${stats.featuredVideos || 0}</div>
                         <div class="stat-label">Featured Video</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.unreadMessages || 0}</div>
+                        <div class="stat-label">Unread Messages</div>
+                    </div>
                 `;
             } catch (error) {
                 console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Contact Messages
+        const SERVICE_LABELS = {
+            'wedding': 'Wedding Photography',
+            'portrait': 'Portrait Session',
+            'event': 'Event Coverage',
+            'commercial': 'Commercial Photography',
+            'fashion': 'Fashion Photography',
+            'music-video': 'Music Video',
+            'film': 'Film Production',
+            'other': 'Other'
+        };
+
+        let contactMessages = [];
+        let messageFilter = 'all';
+
+        // Messages come from the public contact form, so everything shown must be escaped
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        async function loadMessages() {
+            try {
+                const response = await apiCall('/api/contacts');
+                contactMessages = response.data || [];
+                renderMessages();
+            } catch (error) {
+                showAlert('Failed to load messages', 'error');
+            }
+        }
+
+        function filterMessages(filter) {
+            messageFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(button => {
+                button.classList.toggle('active', button.dataset.filter === filter);
+            });
+            renderMessages();
+        }
+
+        function renderMessages() {
+            const unread = contactMessages.filter(message => message.status === 'unread');
+            document.getElementById('allCount').textContent = contactMessages.length;
+            document.getElementById('unreadCount').textContent = unread.length;
+            document.getElementById('readCount').textContent = contactMessages.length - unread.length;
+
+            const visible = messageFilter === 'all'
+                ? contactMessages
+                : contactMessages.filter(message => message.status === messageFilter);
+
+            const messagesList = document.getElementById('messagesList');
+
+            if (visible.length === 0) {
+                messagesList.innerHTML = '<p style="opacity: 0.7; text-align: center;">No messages found</p>';
+                return;
+            }
+
+            messagesList.innerHTML = visible.map(message => {
+                const isUnread = message.status === 'unread';
+                const service = SERVICE_LABELS[message.service] || message.service;
+                const received = new Date(message.createdAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' });
+                const replySubject = encodeURIComponent('Re: Your enquiry - Mshasha Zwinepe');
+
+                return `
+                    <div class="message-card${isUnread ? ' unread' : ''}">
+                        <div class="message-header">
+                            <div class="message-sender">${escapeHtml(message.name)}${isUnread ? '<span class="message-badge">New</span>' : ''}</div>
+                            <div class="message-date">${escapeHtml(received)}</div>
+                        </div>
+                        <div class="message-meta">
+                            <a href="mailto:${escapeHtml(message.email)}?subject=${replySubject}">${escapeHtml(message.email)}</a>
+                            ${message.phone ? `<span>${escapeHtml(message.phone)}</span>` : ''}
+                            ${service ? `<span>${escapeHtml(service)}</span>` : ''}
+                        </div>
+                        <div class="message-body">${escapeHtml(message.message)}</div>
+                        <div class="message-actions">
+                            <a class="btn-small" href="mailto:${escapeHtml(message.email)}?subject=${replySubject}">Reply by Email</a>
+                            <button class="btn-small" onclick="setMessageStatus('${escapeHtml(message.id)}', '${isUnread ? 'read' : 'unread'}')">
+                                Mark as ${isUnread ? 'Read' : 'Unread'}
+                            </button>
+                            <button class="btn-small" onclick="deleteMessage('${escapeHtml(message.id)}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function setMessageStatus(messageId, status) {
+            try {
+                await apiCall(`/api/contacts/${messageId}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status })
+                });
+
+                const message = contactMessages.find(item => item.id === messageId);
+                if (message) message.status = status;
+                renderMessages();
+                updateStats();
+            } catch (error) {
+                showAlert(error.message || 'Failed to update message', 'error');
+            }
+        }
+
+        async function deleteMessage(messageId) {
+            if (!confirm('Are you sure you want to delete this message?')) {
+                return;
+            }
+
+            try {
+                await apiCall(`/api/contacts/${messageId}`, {
+                    method: 'DELETE'
+                });
+
+                contactMessages = contactMessages.filter(item => item.id !== messageId);
+                renderMessages();
+                updateStats();
+                showAlert('Message deleted successfully!', 'success');
+            } catch (error) {
+                showAlert(error.message || 'Failed to delete message', 'error');
             }
         }
 
@@ -1362,6 +1493,7 @@
                     loadPortfolioItems(),
                     loadFeaturedVideo(),
                     loadHomePortfolioItems(),
+                    loadMessages(),
                     updateStats()
                 ]);
 
