@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Mshasha Zwinepe email - receive mail for the domain with Amazon SES, store it in S3 and forward it to an existing inbox
+Description: Mshasha Zwinepe email - receive mail for the domain with Amazon SES and forward it to an existing inbox, plus an SMTP user for sending as the domain addresses
 
 # After the first deploy:
 #   1. Activate the receipt rule set (CloudFormation cannot):
@@ -278,6 +278,26 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:receipt-rule-set/${ReceiptRuleSet}:receipt-rule/*'
 
+  # SMTP login for sending as the domain addresses from a mail client (Gmail "Send mail as").
+  # Create its access key in the IAM console and convert it with: cd Backend && npm run smtp-password
+  SmtpSendUser:
+    Type: AWS::IAM::User
+    Properties:
+      Policies:
+        - PolicyName: SendAsDomainAddresses
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: SendOnlyFromDomainAddresses
+                Effect: Allow
+                Action: ses:SendRawEmail
+                Resource: !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${DomainName}'
+                Condition:
+                  StringLike:
+                    ses:FromAddress: !Ref Recipients
+      Tags:
+        - { Key: Project, Value: mshasha }
+
   ReceiptRuleSet:
     Type: AWS::SES::ReceiptRuleSet
 
@@ -312,3 +332,9 @@ Outputs:
   ForwarderFunctionName:
     Description: Lambda function that forwards mail (logs in CloudWatch)
     Value: !Ref ForwarderFunction
+  SmtpUserName:
+    Description: IAM user whose access key becomes the SMTP login (npm run smtp-password)
+    Value: !Ref SmtpSendUser
+  SmtpServer:
+    Description: SMTP server for mail clients - port 587 with STARTTLS
+    Value: !Sub 'email-smtp.${AWS::Region}.amazonaws.com'

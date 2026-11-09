@@ -1,27 +1,10 @@
 // Prints .env lines for the admin password: `npm run hash-password`
 // Reads the password from stdin so it never appears in shell history or the process list.
 import crypto from 'crypto';
-import readline from 'readline';
 import { hashPassword } from '../src/password.js';
+import { askSecret as ask } from './prompt.js';
 
 const MIN_LENGTH = 12;
-
-const ask = (question) => new Promise((resolve) => {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: process.stdin.isTTY });
-
-  // Hide typed characters when running in a terminal
-  if (process.stdin.isTTY) {
-    rl._writeToOutput = (text) => {
-      if (text.includes(question)) rl.output.write(text);
-    };
-  }
-
-  rl.question(question, (answer) => {
-    rl.close();
-    if (process.stdin.isTTY) process.stdout.write('\n');
-    resolve(answer);
-  });
-});
 
 const password = await ask('New admin password: ');
 
