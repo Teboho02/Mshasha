@@ -1,12 +1,39 @@
 import express from 'express';
 import multer from 'multer';
-import { db, storage } from '../firebase.js';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { supabase, isInvalidId } from '../supabase.js';
+import { uploadObject } from '../s3.js';
+import { requireAdmin } from '../auth.js';
 import asyncHandler from '../middleware/asyncHandler.js';
-import { handleFirestoreError } from '../middleware/errorHandler.js';
+import { handleDatabaseError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
+
+// Media arrays keep their API names; the database uses snake_case columns
+const MEDIA_COLUMNS = {
+  images: 'images',
+  videos: 'videos',
+  youtubeUrls: 'youtube_urls'
+};
+
+const toPortfolioItem = (row) => ({
+  id: row.id,
+  categoryId: row.category_id,
+  categoryName: row.category_name,
+  title: row.title,
+  description: row.description,
+  images: row.images,
+  videos: row.videos,
+  youtubeUrls: row.youtube_urls,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+// Fetch a portfolio row by id, treating a malformed id as not found
+const findPortfolioRow = async (id) => {
+  const { data, error } = await supabase.from('portfolio').select('*').eq('id', id).maybeSingle();
+  if (error && !isInvalidId(error)) throw error;
+  return data;
+};
 
 // Configure multer for file uploads (images and videos)
 const upload = multer({
@@ -62,7 +89,7 @@ function convertToEmbedUrl(url) {
 }
 
 // Media upload route (handles both images and videos)
-router.post('/upload', upload.array('media', 10), handleMulterError, asyncHandler(async (req, res) => {
+router.post('/upload', requireAdmin, upload.array('media', 10), handleMulterError, asyncHandler(async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
@@ -79,13 +106,7 @@ router.post('/upload', upload.array('media', 10), handleMulterError, asyncHandle
         const mediaType = file.mimetype.startsWith('image/') ? 'images' : 'videos';
         const filename = `portfolio/${mediaType}/${timestamp}_${randomString}.${fileExtension}`;
         
-        const storageRef = ref(storage, filename);
-        
-        const snapshot = await uploadBytes(storageRef, file.buffer, {
-          contentType: file.mimetype
-        });
-
-        const downloadURL = await getDownloadURL(snapshot.ref);
+        const downloadURL = await uploadObject(filename, file.buffer, file.mimetype);
 
         return {
           success: true,
@@ -141,7 +162,7 @@ router.post('/upload', upload.array('media', 10), handleMulterError, asyncHandle
 }));
 
 // Single media upload route
-router.post('/upload-single', upload.single('media'), handleMulterError, asyncHandler(async (req, res) => {
+router.post('/upload-single', requireAdmin, upload.single('media'), handleMulterError, asyncHandler(async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -157,13 +178,7 @@ router.post('/upload-single', upload.single('media'), handleMulterError, asyncHa
     const mediaType = file.mimetype.startsWith('image/') ? 'images' : 'videos';
     const filename = `portfolio/${mediaType}/${timestamp}_${randomString}.${fileExtension}`;
     
-    const storageRef = ref(storage, filename);
-    
-    const snapshot = await uploadBytes(storageRef, file.buffer, {
-      contentType: file.mimetype
-    });
-
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    const downloadURL = await uploadObject(filename, file.buffer, file.mimetype);
     
     const uploadResult = {
       originalName: file.originalname,
@@ -195,130 +210,128 @@ router.post('/upload-single', upload.single('media'), handleMulterError, asyncHa
 router.get('/', asyncHandler(async (req, res) => {
   try {
     const { category } = req.query;
-    
-    const portfolioRef = collection(db, 'portfolio');
-    const snapshot = await getDocs(portfolioRef);
-    const portfolio = [];
-    
-    snapshot.forEach((doc) => {
-      const data = {
-        id: doc.id,
-        ...doc.data()
-      };
-      
-      if (!category || data.categoryId === category) {
-        portfolio.push(data);
-      }
-    });
-    
-    portfolio.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    
+
+    // Newest first
+    let query = supabase
+      .from('portfolio')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (category) query = query.eq('category_id', category);
+
+    const { data, error } = await query;
+    if (error && !isInvalidId(error)) throw error;
+
     res.json({
       success: true,
-      data: portfolio
+      data: (data || []).map(toPortfolioItem)
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
 // Add portfolio item with media (images, videos, and YouTube URLs)
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', requireAdmin, asyncHandler(async (req, res) => {
   try {
     const { categoryId, title, description, images, videos, youtubeUrls } = req.body;
-    
+
     if (!categoryId || !title || !description) {
       return res.status(400).json({
         success: false,
         message: 'Category ID, title, and description are required'
       });
     }
-    
+
     // Verify at least one media type is provided
-    const hasMedia = (images && images.length > 0) || 
-                     (videos && videos.length > 0) || 
+    const hasMedia = (images && images.length > 0) ||
+                     (videos && videos.length > 0) ||
                      (youtubeUrls && youtubeUrls.length > 0);
-    
+
     if (!hasMedia) {
       return res.status(400).json({
         success: false,
         message: 'At least one image, video, or YouTube URL must be provided'
       });
     }
-    
+
     // Verify category exists
-    const categoryDoc = await getDoc(doc(db, 'categories', categoryId));
-    if (!categoryDoc.exists()) {
+    const { data: category, error: categoryError } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('id', categoryId)
+      .maybeSingle();
+    if (categoryError && !isInvalidId(categoryError)) throw categoryError;
+
+    if (!category) {
       return res.status(400).json({
         success: false,
         message: 'Category does not exist'
       });
     }
-    
+
     // Process YouTube URLs to embed format
-    const processedYoutubeUrls = youtubeUrls ? 
+    const processedYoutubeUrls = youtubeUrls ?
       youtubeUrls.map(url => ({
         originalUrl: url,
         embedUrl: convertToEmbedUrl(url)
       })) : [];
-    
-    const portfolioData = {
-      categoryId,
-      categoryName: categoryDoc.data().name,
-      title,
-      description,
-      images: Array.isArray(images) ? images : (images ? [images] : []),
-      videos: Array.isArray(videos) ? videos : (videos ? [videos] : []),
-      youtubeUrls: processedYoutubeUrls,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    const portfolioRef = collection(db, 'portfolio');
-    const docRef = await addDoc(portfolioRef, portfolioData);
-    
+
+    const { data, error } = await supabase
+      .from('portfolio')
+      .insert({
+        category_id: categoryId,
+        category_name: category.name,
+        title,
+        description,
+        images: Array.isArray(images) ? images : (images ? [images] : []),
+        videos: Array.isArray(videos) ? videos : (videos ? [videos] : []),
+        youtube_urls: processedYoutubeUrls
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
     res.status(201).json({
       success: true,
       message: 'Portfolio item added successfully',
-      data: {
-        id: docRef.id,
-        ...portfolioData
-      }
+      data: toPortfolioItem(data)
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
 // Update portfolio item
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', requireAdmin, asyncHandler(async (req, res) => {
   try {
     const portfolioId = req.params.id;
     const { title, description, images, videos, youtubeUrls } = req.body;
-    
+
     const updateData = {
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     };
-    
+
     if (title) updateData.title = title;
     if (description) updateData.description = description;
     if (images) updateData.images = images;
     if (videos) updateData.videos = videos;
     if (youtubeUrls) {
-      updateData.youtubeUrls = youtubeUrls.map(url => ({
+      updateData.youtube_urls = youtubeUrls.map(url => ({
         originalUrl: url,
         embedUrl: convertToEmbedUrl(url)
       }));
     }
-    
-    await updateDoc(doc(db, 'portfolio', portfolioId), updateData);
-    
+
+    const { error } = await supabase.from('portfolio').update(updateData).eq('id', portfolioId);
+    if (error) throw error;
+
     res.json({
       success: true,
       message: 'Portfolio item updated successfully'
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
@@ -326,104 +339,103 @@ router.put('/:id', asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
   try {
     const portfolioId = req.params.id;
-    
+
     if (!portfolioId) {
       return res.status(400).json({
         success: false,
         message: 'Portfolio item ID is required'
       });
     }
-    
-    const portfolioRef = doc(db, 'portfolio', portfolioId);
-    const portfolioDoc = await getDoc(portfolioRef);
-    
-    if (!portfolioDoc.exists()) {
+
+    const row = await findPortfolioRow(portfolioId);
+
+    if (!row) {
       return res.status(404).json({
         success: false,
         message: 'Portfolio item not found'
       });
     }
-    
-    const portfolioData = {
-      id: portfolioDoc.id,
-      ...portfolioDoc.data()
-    };
-    
+
     res.json({
       success: true,
-      data: portfolioData
+      data: toPortfolioItem(row)
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
 // Delete specific media item from portfolio
-router.delete('/:id/media/:type/:index', asyncHandler(async (req, res) => {
+router.delete('/:id/media/:type/:index', requireAdmin, asyncHandler(async (req, res) => {
   try {
     const portfolioId = req.params.id;
     const mediaType = req.params.type; // 'images', 'videos', or 'youtubeUrls'
     const mediaIndex = parseInt(req.params.index);
-    
+
     if (isNaN(mediaIndex) || mediaIndex < 0) {
       return res.status(400).json({
         success: false,
         message: 'Invalid media index'
       });
     }
-    
-    if (!['images', 'videos', 'youtubeUrls'].includes(mediaType)) {
+
+    if (!Object.keys(MEDIA_COLUMNS).includes(mediaType)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid media type. Must be images, videos, or youtubeUrls'
       });
     }
-    
-    const portfolioRef = doc(db, 'portfolio', portfolioId);
-    const portfolioDoc = await getDoc(portfolioRef);
-    
-    if (!portfolioDoc.exists()) {
+
+    const row = await findPortfolioRow(portfolioId);
+
+    if (!row) {
       return res.status(404).json({
         success: false,
         message: 'Portfolio item not found'
       });
     }
-    
-    const portfolioData = portfolioDoc.data();
+
+    const portfolioData = toPortfolioItem(row);
     const mediaArray = portfolioData[mediaType] || [];
-    
+
     if (mediaIndex >= mediaArray.length) {
       return res.status(400).json({
         success: false,
         message: 'Media index out of range'
       });
     }
-    
+
     mediaArray.splice(mediaIndex, 1);
-    
+
     // Check if all media arrays are empty
     const images = mediaType === 'images' ? mediaArray : (portfolioData.images || []);
     const videos = mediaType === 'videos' ? mediaArray : (portfolioData.videos || []);
     const youtubeUrls = mediaType === 'youtubeUrls' ? mediaArray : (portfolioData.youtubeUrls || []);
-    
+
     if (images.length === 0 && videos.length === 0 && youtubeUrls.length === 0) {
-      await deleteDoc(portfolioRef);
+      const { error } = await supabase.from('portfolio').delete().eq('id', portfolioId);
+      if (error) throw error;
+
       return res.json({
         success: true,
         message: 'Last media deleted. Portfolio item removed.',
         deletedItem: true
       });
     }
-    
-    await updateDoc(portfolioRef, {
-      [mediaType]: mediaArray,
-      updatedAt: new Date().toISOString()
-    });
-    
+
+    const { error } = await supabase
+      .from('portfolio')
+      .update({
+        [MEDIA_COLUMNS[mediaType]]: mediaArray,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', portfolioId);
+    if (error) throw error;
+
     res.json({
       success: true,
       message: `${mediaType.slice(0, -1)} deleted successfully`,
-      data: { 
+      data: {
         id: portfolioId,
         remainingMedia: {
           images: images.length,
@@ -433,23 +445,24 @@ router.delete('/:id/media/:type/:index', asyncHandler(async (req, res) => {
       }
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
 // Delete portfolio item
-router.delete('/:id', asyncHandler(async (req, res) => {
+router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
   try {
     const portfolioId = req.params.id;
-    
-    await deleteDoc(doc(db, 'portfolio', portfolioId));
-    
+
+    const { error } = await supabase.from('portfolio').delete().eq('id', portfolioId);
+    if (error) throw error;
+
     res.json({
       success: true,
       message: 'Portfolio item deleted successfully'
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 

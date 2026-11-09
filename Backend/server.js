@@ -12,11 +12,15 @@ import homePortfolioRoutes from './src/routes/homePortfolio.js';
 import statsRoutes from './src/routes/stats.js';
 import healthRoutes from './src/routes/health.js';
 import contactsRoutes from './src/routes/contacts.js';
+import authRoutes from './src/routes/auth.js';
 
 // Import middleware
 import { globalErrorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 
 const app = express();
+
+// Trust a reverse proxy on the same host (e.g. Caddy/nginx) so req.ip and req.secure are correct
+app.set('trust proxy', 'loopback');
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -46,12 +50,13 @@ app.use('/api/home-portfolio', homePortfolioRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/contacts', contactsRoutes);
+app.use('/api/auth', authRoutes);
 
 // Root API route
 app.get('/api', (req, res) => {
   res.json({
     success: true,
-    message: 'Mshasha Zwinepe Photography API is running',
+    message: 'Mshasha Zwinepe API is running',
     timestamp: new Date().toISOString(),
     environment: NODE_ENV
   });

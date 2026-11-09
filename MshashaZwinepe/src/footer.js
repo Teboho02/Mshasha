@@ -2,8 +2,8 @@
 const footerHTML = `
   <div class="footer-content">
     <div class="footer-section">
-      <h3>Mshasha Zwinepe Photography</h3>
-      <p>Capturing moments, creating art.</p>
+      <h3>Mshasha Zwinepe</h3>
+      <p>For Memories That Linger Forever</p>
     </div>
     
     <div class="footer-section">
@@ -47,7 +47,7 @@ const footerHTML = `
   </div>
   
   <div class="footer-bottom">
-    <p>&copy; 2025 Mshasha Zwinepe Photography. All rights reserved.</p>
+    <p>&copy; 2025 Mshasha Zwinepe. All rights reserved.</p>
   </div>
 `;
 

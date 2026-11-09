@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Public read access to portfolio media in the existing Mshasha S3 bucket - uploads and deletes stay server-only
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: mshasha
+    Description: Name of the existing S3 bucket that stores portfolio media
+
+Resources:
+  PortfolioPublicReadPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadPortfolioMedia
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub 'arn:${AWS::Partition}:s3:::${BucketName}/portfolio/*'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::${BucketName}'
+              - !Sub 'arn:${AWS::Partition}:s3:::${BucketName}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
