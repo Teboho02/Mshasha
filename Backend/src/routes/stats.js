@@ -1,52 +1,53 @@
 import express from 'express';
-import { db } from '../firebase.js';
-import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
+import { supabase } from '../supabase.js';
+import { requireAdmin } from '../auth.js';
 import asyncHandler from '../middleware/asyncHandler.js';
-import { handleFirestoreError } from '../middleware/errorHandler.js';
+import { handleDatabaseError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
+// Count rows without fetching them
+const countRows = async (table, filter) => {
+  let query = supabase.from(table).select('*', { count: 'exact', head: true });
+  if (filter) query = filter(query);
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+};
+
 // Get dashboard statistics
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   try {
-    // Get categories count
-    const categoriesSnapshot = await getDocs(collection(db, 'categories'));
-    const categoriesCount = categoriesSnapshot.size;
-    
-    // Get portfolio items count
-    const portfolioSnapshot = await getDocs(collection(db, 'portfolio'));
-    const portfolioCount = portfolioSnapshot.size;
-    
-    // Get home portfolio items count
-    const homePortfolioSnapshot = await getDocs(collection(db, 'home-portfolio'));
-    const homePortfolioCount = homePortfolioSnapshot.size;
-    
-    // Check if featured video exists
-    const videoDoc = await getDoc(doc(db, 'settings', 'featured-video'));
-    const hasFeaturedVideo = videoDoc.exists();
-    
-    // Get contact messages count
-    const contactsSnapshot = await getDocs(collection(db, 'contacts'));
-    const contactsCount = contactsSnapshot.size;
-    
-    // Get unread messages count
-    const unreadQuery = query(collection(db, 'contacts'), where('status', '==', 'unread'));
-    const unreadSnapshot = await getDocs(unreadQuery);
-    const unreadCount = unreadSnapshot.size;
-    
+    const [
+      categoriesCount,
+      portfolioCount,
+      homePortfolioCount,
+      featuredVideoCount,
+      contactsCount,
+      unreadCount
+    ] = await Promise.all([
+      countRows('categories'),
+      countRows('portfolio'),
+      countRows('home_portfolio'),
+      countRows('settings', (q) => q.eq('key', 'featured-video')),
+      countRows('contacts'),
+      countRows('contacts', (q) => q.eq('status', 'unread'))
+    ]);
+
     res.json({
       success: true,
       data: {
         categories: categoriesCount,
         portfolioItems: portfolioCount,
         homePortfolioItems: homePortfolioCount,
-        featuredVideos: hasFeaturedVideo ? 1 : 0,
+        featuredVideos: featuredVideoCount > 0 ? 1 : 0,
         totalMessages: contactsCount,
         unreadMessages: unreadCount
       }
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 

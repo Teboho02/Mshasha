@@ -1,17 +1,24 @@
 import express from 'express';
-import { db } from '../firebase.js';
-import { doc, getDoc, updateDoc, addDoc, collection } from "firebase/firestore";
+import { supabase } from '../supabase.js';
+import { requireAdmin } from '../auth.js';
 import asyncHandler from '../middleware/asyncHandler.js';
-import { handleFirestoreError } from '../middleware/errorHandler.js';
+import { handleDatabaseError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
+
+const FEATURED_VIDEO_KEY = 'featured-video';
 
 // Get featured video
 router.get('/', asyncHandler(async (req, res) => {
   try {
-    const videoDoc = await getDoc(doc(db, 'settings', 'featured-video'));
-    
-    if (!videoDoc.exists()) {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', FEATURED_VIDEO_KEY)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (!data) {
       // Return default video if none exists
       return res.json({
         success: true,
@@ -22,71 +29,55 @@ router.get('/', asyncHandler(async (req, res) => {
         }
       });
     }
-    
+
     res.json({
       success: true,
-      data: videoDoc.data()
+      data: data.value
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
-// Update featured video
-router.put('/', asyncHandler(async (req, res) => {
+// Create or update featured video
+router.put('/', requireAdmin, asyncHandler(async (req, res) => {
   try {
     const { title, url, description } = req.body;
-    
+
     if (!title || !url || !description) {
       return res.status(400).json({
         success: false,
         message: 'Title, URL, and description are required'
       });
     }
-    
+
     // Convert YouTube URL to embed format if needed
     let embedUrl = url;
     if (url.includes('youtube.com/watch?v=')) {
       const videoId = url.split('v=')[1].split('&')[0];
       embedUrl = `https://www.youtube.com/embed/${videoId}`;
     }
-    
+
     const videoData = {
       title,
       url: embedUrl,
       description,
       updatedAt: new Date().toISOString()
     };
-    
-    await updateDoc(doc(db, 'settings', 'featured-video'), videoData);
-    
+
+    const { error } = await supabase
+      .from('settings')
+      .upsert({ key: FEATURED_VIDEO_KEY, value: videoData, updated_at: videoData.updatedAt });
+    if (error) throw error;
+
     res.json({
       success: true,
       message: 'Featured video updated successfully',
       data: videoData
     });
   } catch (error) {
-    // If document doesn't exist, create it
-    if (error.code === 'not-found') {
-      try {
-        await addDoc(collection(db, 'settings'), {
-          ...videoData,
-          id: 'featured-video',
-          createdAt: new Date().toISOString()
-        });
-        
-        res.json({
-          success: true,
-          message: 'Featured video created successfully',
-          data: videoData
-        });
-      } catch (createError) {
-        handleFirestoreError(createError, res);
-      }
-    } else {
-      handleFirestoreError(error, res);
-    }
+    handleDatabaseError(error, res);
   }
 }));
 
-export default router;  
+export default router;

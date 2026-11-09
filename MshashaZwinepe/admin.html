@@ -4,14 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Mshasha Zwinepe Photography</title>
+    <title>Admin Panel - Mshasha Zwinepe</title>
     <link rel="stylesheet" href="admin.css">
-    <!-- Include Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 </head>
 
-<body>
+<body class="logged-out">
 
     <!-- Custom Camera Cursor -->
     <div class="camera-cursor">
@@ -27,10 +24,27 @@
     </div>
     <div class="cursor-dot"></div>
 
+    <!-- Login Screen -->
+    <div class="login-screen">
+        <form class="login-panel" id="loginForm">
+            <h1>Admin Login</h1>
+            <p>Mshasha Zwinepe</p>
+            <div class="form-group">
+                <label for="adminPassword">Password</label>
+                <input type="password" id="adminPassword" class="form-input" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn-primary" id="loginBtn">Log In</button>
+            <div class="login-error" id="loginError" role="alert"></div>
+        </form>
+    </div>
+
     <div class="container">
+        <div class="header-actions">
+            <button type="button" class="btn-logout" id="logoutBtn">Log Out</button>
+        </div>
         <div class="header">
             <h1>Admin Panel</h1>
-            <p>Content Management for Mshasha Zwinepe Photography</p>
+            <p>Content Management for Mshasha Zwinepe</p>
         </div>
 
         <div class="admin-nav">
@@ -263,7 +277,7 @@
                         const imageFiles = document.getElementById('photoFile').files;
                         if (imageFiles.length > 0) {
                             const imageUploadPromises = Array.from(imageFiles).map(file =>
-                                uploadToFirebase(file, 'portfolio/images')
+                                uploadMedia(file)
                             );
                             const imageResults = await Promise.all(imageUploadPromises);
                             imageUrls = imageResults.map(result => result.url);
@@ -276,7 +290,7 @@
                         const videoFiles = document.getElementById('videoFile').files;
                         if (videoFiles.length > 0) {
                             const videoUploadPromises = Array.from(videoFiles).map(file =>
-                                uploadToFirebase(file, 'portfolio/videos')
+                                uploadMedia(file)
                             );
                             const videoResults = await Promise.all(videoUploadPromises);
                             videoUrls = videoResults.map(result => result.url);
@@ -581,22 +595,8 @@
     </div>
 
     <script>
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBRq8lvXWDQLpdeXL3oz59TBx38LvUPGRk",
-            authDomain: "mshashazwinepe-8489d.firebaseapp.com",
-            projectId: "mshashazwinepe-8489d",
-            storageBucket: "mshashazwinepe-8489d.firebasestorage.app",
-            messagingSenderId: "1020679564289",
-            appId: "1:1020679564289:web:93a9c669415deeaf42a400"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const storage = firebase.storage();
-
         // API Configuration
-        const API_BASE_URL = 'http://localhost:3000';
+        const API_BASE_URL = '';
 
         // Custom cursor functionality
         const cursor = document.querySelector('.camera-cursor');
@@ -633,6 +633,11 @@
                 });
 
                 const data = await response.json();
+
+                // Session missing or expired: send the admin back to the login screen
+                if (response.status === 401) {
+                    showLogin('Your session has expired. Please log in again.');
+                }
 
                 if (!response.ok) {
                     throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -693,38 +698,44 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Firebase Storage Upload Function
-        async function uploadToFirebase(file, folder = 'portfolio') {
+        // Media Upload Function - sends the file to the backend, which stores it in S3
+        // (XHR rather than fetch so upload progress can be reported)
+        async function uploadMedia(file) {
             return new Promise((resolve, reject) => {
-                const timestamp = Date.now();
-                const randomString = Math.random().toString(36).substring(2, 15);
-                const fileExtension = file.name.split('.').pop();
-                const filename = `${folder}/${timestamp}_${randomString}.${fileExtension}`;
+                const formData = new FormData();
+                formData.append('media', file);
 
-                const storageRef = storage.ref().child(filename);
-                const uploadTask = storageRef.put(file);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `${API_BASE_URL}/api/portfolio/upload-single`);
 
-                uploadTask.on('state_changed',
-                    (snapshot) => {
-                        // Progress monitoring
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        updateUploadProgress(progress);
-                    },
-                    (error) => {
-                        reject(error);
-                    },
-                    async () => {
-                        // Upload completed successfully
-                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                        resolve({
-                            url: downloadURL,
-                            filename: filename,
-                            originalName: file.name,
-                            size: file.size,
-                            contentType: file.type
-                        });
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        updateUploadProgress((event.loaded / event.total) * 100);
                     }
-                );
+                };
+
+                xhr.onload = () => {
+                    let data = null;
+                    try {
+                        data = JSON.parse(xhr.responseText);
+                    } catch (parseError) {
+                        // Non-JSON response, handled below
+                    }
+
+                    if (xhr.status === 401) {
+                        showLogin('Your session has expired. Please log in again.');
+                    }
+
+                    if (xhr.status >= 200 && xhr.status < 300 && data && data.success) {
+                        resolve(data.data);
+                    } else {
+                        reject(new Error((data && (data.message || data.error)) || `Upload failed with status ${xhr.status}`));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Network error while uploading file'));
+
+                xhr.send(formData);
             });
         }
 
@@ -887,7 +898,7 @@
             }
         }
 
-        // Portfolio Management - UPDATED FOR FIREBASE STORAGE
+        // Portfolio Management
         async function uploadPhotos() {
             const categoryId = document.getElementById('photoCategory').value;
             const title = document.getElementById('photoTitle').value.trim();
@@ -904,14 +915,14 @@
                 setLoading(button, true);
                 updateUploadProgress(0);
 
-                // Upload each file to Firebase Storage
+                // Upload each file to S3 via the backend
                 const files = Array.from(fileInput.files);
-                const uploadPromises = files.map(file => uploadToFirebase(file, 'portfolio'));
+                const uploadPromises = files.map(file => uploadMedia(file));
 
                 const uploadResults = await Promise.all(uploadPromises);
                 const imageUrls = uploadResults.map(result => result.url);
 
-                // Create portfolio item with the Firebase Storage URLs
+                // Create portfolio item with the S3 URLs
                 const response = await apiCall('/api/portfolio', {
                     method: 'POST',
                     body: JSON.stringify({
@@ -931,7 +942,7 @@
 
                 await loadPortfolioItems();
                 await updateStats();
-                showAlert('Photo(s) uploaded successfully to Firebase Storage!', 'success');
+                showAlert('Photo(s) uploaded successfully!', 'success');
             } catch (error) {
                 console.error('Upload error:', error);
                 showAlert(error.message || 'Failed to upload photo(s)', 'error');
@@ -1057,7 +1068,7 @@
             }
 
             try {
-                await apiCall(`/api/portfolio/${itemId}/image/${imageIndex}`, {
+                await apiCall(`/api/portfolio/${itemId}/media/images/${imageIndex}`, {
                     method: 'DELETE'
                 });
 
@@ -1069,7 +1080,7 @@
             }
         }
 
-        // Home Portfolio Management - UPDATED FOR FIREBASE STORAGE
+        // Home Portfolio Management
         async function addHomePortfolioItem() {
             const category = document.getElementById('homeCategory').value;
             const title = document.getElementById('homeTitle').value.trim();
@@ -1085,11 +1096,11 @@
             try {
                 setLoading(button, true);
 
-                // Upload image to Firebase Storage
+                // Upload image to S3 via the backend
                 const file = fileInput.files[0];
-                const uploadResult = await uploadToFirebase(file, 'home-portfolio');
+                const uploadResult = await uploadMedia(file);
 
-                // Create home portfolio item with Firebase Storage URL
+                // Create home portfolio item with the S3 URL
                 const response = await apiCall('/api/home-portfolio', {
                     method: 'POST',
                     body: JSON.stringify({
@@ -1109,7 +1120,7 @@
 
                 await loadHomePortfolioItems();
                 await updateStats();
-                showAlert('Home portfolio item added successfully with Firebase Storage!', 'success');
+                showAlert('Home portfolio item added successfully!', 'success');
             } catch (error) {
                 showAlert(error.message || 'Failed to add home portfolio item', 'error');
             } finally {
@@ -1276,31 +1287,108 @@
             }, 5000);
         }
 
-      async function init() {
-    try {
-        // Setup file previews
-        setupFilePreview('photoFile', 'filePreview');
-        setupFilePreview('homeImageFile', 'homeImagePreview');
+        // Authentication
+        function showLogin(message = '') {
+            document.body.classList.add('logged-out');
+            document.getElementById('loginError').textContent = message;
+            document.getElementById('adminPassword').focus();
+        }
 
-        // Remove or fix this line - it's causing the error
-        // await apiCall('/');  // <-- DELETE THIS LINE
+        function hideLogin() {
+            document.body.classList.remove('logged-out');
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('adminPassword').value = '';
+        }
 
-        // Load initial data
-        await Promise.all([
-            updateCategorySelects(),
-            loadCategories(),
-            loadPortfolioItems(),
-            loadFeaturedVideo(),
-            loadHomePortfolioItems(),
-            updateStats()
-        ]);
+        async function handleLogin(event) {
+            event.preventDefault();
 
-        showAlert('Admin panel connected successfully! Images will be stored in Firebase Storage.', 'success');
-    } catch (error) {
-        showAlert('Failed to connect to API. Please ensure the server is running on localhost:3000', 'error');
-        console.error('Initialization error:', error);
-    }
-}
+            const passwordInput = document.getElementById('adminPassword');
+            const button = document.getElementById('loginBtn');
+            const errorBox = document.getElementById('loginError');
+
+            button.disabled = true;
+            errorBox.textContent = '';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: passwordInput.value })
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    errorBox.textContent = data.message || 'Login failed';
+                    passwordInput.select();
+                    return;
+                }
+
+                hideLogin();
+                await loadDashboard();
+            } catch (error) {
+                errorBox.textContent = 'Could not reach the server. Please try again.';
+                console.error('Login error:', error);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' });
+            } finally {
+                // Reload so no admin data stays on the page
+                window.location.reload();
+            }
+        }
+
+        async function isLoggedIn() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/session`);
+                const data = await response.json();
+                return Boolean(data.data && data.data.authenticated);
+            } catch (error) {
+                console.error('Session check failed:', error);
+                return false;
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                await Promise.all([
+                    updateCategorySelects(),
+                    loadCategories(),
+                    loadPortfolioItems(),
+                    loadFeaturedVideo(),
+                    loadHomePortfolioItems(),
+                    updateStats()
+                ]);
+
+                showAlert('Admin panel connected successfully!', 'success');
+            } catch (error) {
+                // A 401 already switched to the login screen
+                if (document.body.classList.contains('logged-out')) return;
+
+                showAlert('Failed to connect to API. Please ensure the backend server is running.', 'error');
+                console.error('Initialization error:', error);
+            }
+        }
+
+        async function init() {
+            // One-time setup
+            setupFilePreview('photoFile', 'filePreview');
+            setupFilePreview('homeImageFile', 'homeImagePreview');
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+            if (await isLoggedIn()) {
+                hideLogin();
+                await loadDashboard();
+            } else {
+                showLogin();
+            }
+        }
 
         // Start the application when the page loads
         window.addEventListener('DOMContentLoaded', init);

@@ -1,0 +1,314 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Mshasha Zwinepe email - receive mail for the domain with Amazon SES, store it in S3 and forward it to an existing inbox
+
+# After the first deploy:
+#   1. Activate the receipt rule set (CloudFormation cannot):
+#        aws ses set-active-receipt-rule-set --region af-south-1 --rule-set-name <ReceiptRuleSetName output>
+#   2. Click the verification link AWS emails to ForwardTo (needed while SES is in sandbox mode).
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: mshashazwinepe.co.za
+    Description: Domain that receives mail
+
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: Route 53 public hosted zone ID for DomainName
+
+  Recipients:
+    Type: CommaDelimitedList
+    Default: bookings@mshashazwinepe.co.za,info@mshashazwinepe.co.za
+    Description: Addresses on the domain that accept mail; anything else is rejected
+
+  ForwardTo:
+    Type: String
+    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+    ConstraintDescription: Must be an email address
+    Description: Existing inbox that receives the forwarded mail (gets a one-time SES verification email)
+
+  RetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    Description: Days to keep the original received messages in S3
+
+Resources:
+  # Sending identity for the domain with Easy DKIM, so forwarded mail passes DKIM/DMARC
+  DomainIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref DomainName
+      DkimSigningAttributes:
+        NextSigningKeyLength: RSA_2048_BIT
+
+  # In sandbox mode SES only delivers to verified addresses
+  ForwardToIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref ForwardTo
+
+  DkimRecord1:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !GetAtt DomainIdentity.DkimDNSTokenName1
+      Type: CNAME
+      TTL: '1800'
+      ResourceRecords: [!GetAtt DomainIdentity.DkimDNSTokenValue1]
+
+  DkimRecord2:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !GetAtt DomainIdentity.DkimDNSTokenName2
+      Type: CNAME
+      TTL: '1800'
+      ResourceRecords: [!GetAtt DomainIdentity.DkimDNSTokenValue2]
+
+  DkimRecord3:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !GetAtt DomainIdentity.DkimDNSTokenName3
+      Type: CNAME
+      TTL: '1800'
+      ResourceRecords: [!GetAtt DomainIdentity.DkimDNSTokenValue3]
+
+  MxRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: MX
+      TTL: '3600'
+      ResourceRecords:
+        - !Sub '10 inbound-smtp.${AWS::Region}.amazonaws.com'
+
+  SpfRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: TXT
+      TTL: '3600'
+      ResourceRecords:
+        - '"v=spf1 include:amazonses.com ~all"'
+
+  # Monitor-only DMARC policy; tighten to quarantine once forwarding is confirmed working
+  DmarcRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub '_dmarc.${DomainName}'
+      Type: TXT
+      TTL: '3600'
+      ResourceRecords:
+        - '"v=DMARC1; p=none"'
+
+  # Raw received messages. Transient copies, so no versioning; expired after RetentionDays.
+  MailBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireReceivedMail
+            Status: Enabled
+            ExpirationInDays: !Ref RetentionDays
+      Tags:
+        - { Key: Project, Value: mshasha }
+
+  MailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowSesToStoreMail
+            Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${MailBucket.Arn}/inbound/*'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:receipt-rule-set/${ReceiptRuleSet}:receipt-rule/*'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt MailBucket.Arn
+              - !Sub '${MailBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  ForwarderLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ForwarderFunction}'
+      RetentionInDays: 30
+
+  ForwarderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: ForwardMail
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadReceivedMail
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${MailBucket.Arn}/inbound/*'
+              - Sid: SendForwardedMail
+                Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${DomainName}'
+                  - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${ForwardTo}'
+      Tags:
+        - { Key: Project, Value: mshasha }
+
+  # Forwards a received message: From becomes the receiving address (a verified identity),
+  # Reply-To keeps the original sender so replies go straight to them.
+  ForwarderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Forwards mail received by SES for the Mshasha domain to the ForwardTo inbox
+      Runtime: nodejs24.x
+      Handler: index.handler
+      Role: !GetAtt ForwarderRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          BUCKET: !Ref MailBucket
+          PREFIX: inbound/
+          FORWARD_TO: !Ref ForwardTo
+      Code:
+        ZipFile: |
+          const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+          const { SESv2Client, SendEmailCommand } = require('@aws-sdk/client-sesv2');
+
+          const s3 = new S3Client({});
+          const ses = new SESv2Client({});
+          const { BUCKET, PREFIX, FORWARD_TO } = process.env;
+
+          // Headers SES rejects or that would misrepresent the forwarded copy
+          const DROP = /^(return-path|sender|message-id|dkim-signature|from|reply-to)$/i;
+
+          const rewrite = (raw, recipient) => {
+            const split = raw.search(/\r?\n\r?\n/);
+            const headers = raw.slice(0, split).split(/\r?\n(?=[^ \t])/);
+            const body = raw.slice(split);
+            const find = (name) => headers.find((h) => h.toLowerCase().startsWith(name + ':'));
+
+            const from = find('from');
+            const sender = from ? from.slice(5).trim() : '';
+            const address = (sender.match(/<([^>]+)>/) || sender.match(/(\S+@\S+)/) || [])[1] || 'unknown sender';
+            const kept = headers.filter((h) => !DROP.test(h.split(':')[0].trim()));
+
+            kept.unshift(
+              `From: "${address.replace(/["\\]/g, '')} via website" <${recipient}>`,
+              find('reply-to') || `Reply-To: ${sender || address}`
+            );
+            return kept.join('\r\n') + body;
+          };
+
+          exports.rewrite = rewrite;
+
+          exports.handler = async (event) => {
+            const { mail, receipt } = event.Records[0].ses;
+
+            if ([receipt.spamVerdict, receipt.virusVerdict].some((v) => v && v.status === 'FAIL')) {
+              console.log('Dropped (spam or virus)', mail.messageId);
+              return;
+            }
+
+            const object = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: PREFIX + mail.messageId }));
+            const raw = Buffer.from(await object.Body.transformToByteArray()).toString('latin1');
+            const recipient = receipt.recipients[0].toLowerCase();
+
+            await ses.send(new SendEmailCommand({
+              FromEmailAddress: recipient,
+              Destination: { ToAddresses: [FORWARD_TO] },
+              Content: { Raw: { Data: Buffer.from(rewrite(raw, recipient), 'latin1') } }
+            }));
+            console.log('Forwarded', mail.messageId, 'for', recipient);
+          };
+      Tags:
+        - { Key: Project, Value: mshasha }
+
+  ForwarderInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ForwarderFunction
+      Action: lambda:InvokeFunction
+      Principal: ses.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:receipt-rule-set/${ReceiptRuleSet}:receipt-rule/*'
+
+  ReceiptRuleSet:
+    Type: AWS::SES::ReceiptRuleSet
+
+  ForwardRule:
+    Type: AWS::SES::ReceiptRule
+    # SES checks it can write to the bucket and invoke the function when the rule is created
+    DependsOn:
+      - MailBucketPolicy
+      - ForwarderInvokePermission
+    Properties:
+      RuleSetName: !Ref ReceiptRuleSet
+      Rule:
+        Enabled: true
+        ScanEnabled: true
+        TlsPolicy: Optional
+        Recipients: !Ref Recipients
+        Actions:
+          - S3Action:
+              BucketName: !Ref MailBucket
+              ObjectKeyPrefix: inbound/
+          - LambdaAction:
+              FunctionArn: !GetAtt ForwarderFunction.Arn
+              InvocationType: Event
+
+Outputs:
+  ReceiptRuleSetName:
+    Description: Activate with - aws ses set-active-receipt-rule-set --rule-set-name <this>
+    Value: !Ref ReceiptRuleSet
+  MailBucketName:
+    Description: Bucket holding the original received messages
+    Value: !Ref MailBucket
+  ForwarderFunctionName:
+    Description: Lambda function that forwards mail (logs in CloudWatch)
+    Value: !Ref ForwarderFunction

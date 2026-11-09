@@ -1,0 +1,291 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Mshasha Zwinepe web server - single Ubuntu 24.04 arm64 EC2 instance running the Node app behind Caddy
+
+# Deploy after the mshasha-backend-role stack exists and infra/deploy.sh has uploaded the app bundle
+# and Backend/.env. The instance is stateless: data lives in Supabase and media in S3.
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t4g.micro
+    AllowedValues: [t4g.nano, t4g.micro, t4g.small, t4g.medium]
+    Description: Graviton (arm64) instance type. t4g.micro (1 GiB) plus the swap file covers 100 MB uploads.
+
+  VolumeSize:
+    Type: Number
+    Default: 10
+    MinValue: 8
+    Description: Root EBS volume size in GiB
+
+  UbuntuAmi:
+    Type: AWS::EC2::Image::Id
+    Description: >-
+      Ubuntu 24.04 LTS arm64 AMI ID. Pinned on purpose - changing it replaces the instance.
+      Look up the current one with - aws ssm get-parameter --name
+      /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
+
+  RoleStackName:
+    Type: String
+    Default: mshasha-backend-role
+    Description: Name of the stack that exports the backend instance profile
+
+  BucketName:
+    Type: String
+    Default: mshasha
+    Description: S3 bucket holding portfolio media and the deploy bundle
+
+  BundleKey:
+    Type: String
+    Default: deploy/mshasha.tar.gz
+    Description: S3 key of the application bundle uploaded by infra/deploy.sh
+
+  EnvKey:
+    Type: String
+    Default: deploy/backend.env
+    Description: S3 key of the backend .env file uploaded by infra/deploy.sh (private deploy prefix)
+
+  NodeMajorVersion:
+    Type: Number
+    Default: 24
+    Description: Node.js major version installed from NodeSource
+
+  KeyName:
+    Type: String
+    Default: ''
+    Description: Optional EC2 key pair for SSH. Leave empty to use only SSM Session Manager.
+
+  SshCidr:
+    Type: String
+    Default: ''
+    Description: Optional CIDR allowed to SSH (for example 203.0.113.10/32). Leave empty to keep port 22 closed.
+
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Optional apex domain (for example mshashazwinepe.co.za). Creates A records for it and www; Caddy gets HTTPS certificates for both.
+
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: Route 53 public hosted zone ID for DomainName. Required when DomainName is set.
+
+Conditions:
+  HasDns: !And [!Not [!Equals [!Ref DomainName, '']], !Not [!Equals [!Ref HostedZoneId, '']]]
+  HasKey: !Not [!Equals [!Ref KeyName, '']]
+  HasSsh: !Not [!Equals [!Ref SshCidr, '']]
+
+Resources:
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Mshasha web traffic - HTTP, HTTPS and optional SSH
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP for ACME and redirect }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: HTTPS }
+        - { IpProtocol: udp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: HTTP/3 }
+        - !If
+          - HasSsh
+          - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Ref SshCidr, Description: SSH admin }
+          - !Ref AWS::NoValue
+      Tags:
+        - { Key: Name, Value: mshasha-web }
+        - { Key: Project, Value: mshasha }
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref UbuntuAmi
+      InstanceType: !Ref InstanceType
+      KeyName: !If [HasKey, !Ref KeyName, !Ref AWS::NoValue]
+      IamInstanceProfile:
+        Fn::ImportValue: !Sub '${RoleStackName}-InstanceProfileName'
+      SecurityGroupIds: [!GetAtt WebSecurityGroup.GroupId]
+      MetadataOptions:
+        HttpTokens: required # IMDSv2 only
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: !Ref VolumeSize
+            Encrypted: true
+            DeleteOnTermination: true # nothing stateful on the instance
+      # Runs once on first boot. Log: /var/log/mshasha-bootstrap.log
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          exec > >(tee -a /var/log/mshasha-bootstrap.log) 2>&1
+          echo "Bootstrap started $(date -Is)"
+
+          # Settings read by mshasha-deploy
+          cat > /etc/mshasha.conf <<'CONF'
+          BUCKET=${BucketName}
+          BUNDLE_KEY=${BundleKey}
+          ENV_KEY=${EnvKey}
+          REGION=${AWS::Region}
+          CONF
+
+          # Swap so large uploads (held in memory by multer) don't exhaust 1 GiB of RAM
+          if [ ! -f /swapfile ]; then
+            fallocate -l 2G /swapfile
+            chmod 600 /swapfile
+            mkswap /swapfile
+            swapon /swapfile
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
+          fi
+
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ca-certificates curl gnupg unzip debian-keyring debian-archive-keyring apt-transport-https
+
+          # Node.js
+          curl -fsSL https://deb.nodesource.com/setup_${NodeMajorVersion}.x | bash -
+          apt-get install -y nodejs
+
+          # Caddy (reverse proxy with automatic HTTPS)
+          curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+          curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt -o /etc/apt/sources.list.d/caddy-stable.list
+          apt-get update
+          apt-get install -y caddy
+
+          # AWS CLI v2 for the bundle and .env downloads
+          curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip -o /tmp/awscliv2.zip
+          unzip -q -o /tmp/awscliv2.zip -d /tmp
+          /tmp/aws/install --update
+          rm -rf /tmp/aws /tmp/awscliv2.zip
+
+          # App user and directories
+          id mshasha >/dev/null 2>&1 || useradd --system --home-dir /opt/mshasha --shell /usr/sbin/nologin mshasha
+          mkdir -p /opt/mshasha/releases /opt/mshasha/shared
+
+          # Deploy command: sudo mshasha-deploy
+          cat > /usr/local/bin/mshasha-deploy <<'DEPLOY'
+          #!/bin/bash
+          # Download the latest bundle and .env, install dependencies and restart the app
+          set -euo pipefail
+          . /etc/mshasha.conf
+
+          RELEASE=/opt/mshasha/releases/$(date +%Y%m%d%H%M%S)
+          mkdir -p "$RELEASE"
+          aws s3 cp "s3://$BUCKET/$BUNDLE_KEY" /tmp/mshasha-bundle.tar.gz --region "$REGION" --only-show-errors
+          tar -xzf /tmp/mshasha-bundle.tar.gz -C "$RELEASE"
+          rm -f /tmp/mshasha-bundle.tar.gz
+          (cd "$RELEASE/Backend" && npm ci --omit=dev --no-audit --no-fund)
+
+          # Backend .env (readable only by the app user once chowned below)
+          umask 077
+          aws s3 cp "s3://$BUCKET/$ENV_KEY" /opt/mshasha/shared/.env.new --region "$REGION" --only-show-errors
+          mv /opt/mshasha/shared/.env.new /opt/mshasha/shared/.env
+
+          chown -R mshasha:mshasha /opt/mshasha
+          ln -sfn "$RELEASE" /opt/mshasha/current
+          systemctl restart mshasha
+          echo "Deployed $RELEASE"
+
+          # Keep the three most recent releases
+          ls -1dt /opt/mshasha/releases/* | tail -n +4 | xargs -r rm -rf
+          DEPLOY
+          chmod 755 /usr/local/bin/mshasha-deploy
+
+          cat > /etc/systemd/system/mshasha.service <<'UNIT'
+          [Unit]
+          Description=Mshasha Zwinepe web app
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          User=mshasha
+          WorkingDirectory=/opt/mshasha/current/Backend
+          Environment=NODE_ENV=production
+          Environment=PORT=3000
+          Environment=AWS_REGION=${AWS::Region}
+          Environment=S3_BUCKET=${BucketName}
+          ExecStart=/usr/bin/node --env-file=/opt/mshasha/shared/.env server.js
+          Restart=always
+          RestartSec=5
+          NoNewPrivileges=true
+          PrivateTmp=true
+          ProtectSystem=strict
+          ProtectHome=true
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          systemctl daemon-reload
+          systemctl enable mshasha
+
+          # Caddy: HTTPS for the domain (www redirects to the apex), or plain HTTP on the IP without one
+          DOMAIN='${DomainName}'
+          if [ -n "$DOMAIN" ]; then
+            cat > /etc/caddy/Caddyfile <<CADDY
+          $DOMAIN {
+          	encode zstd gzip
+          	reverse_proxy 127.0.0.1:3000
+          }
+
+          www.$DOMAIN {
+          	redir https://$DOMAIN{uri} permanent
+          }
+          CADDY
+          else
+            cat > /etc/caddy/Caddyfile <<'CADDY'
+          :80 {
+          	encode zstd gzip
+          	reverse_proxy 127.0.0.1:3000
+          }
+          CADDY
+          fi
+          systemctl reload caddy || systemctl restart caddy
+
+          # First deploy needs the bundle and .env in S3; otherwise run sudo mshasha-deploy later
+          if ! /usr/local/bin/mshasha-deploy; then
+            echo "First deploy failed - run infra/deploy.sh --upload-only, then: sudo mshasha-deploy"
+          fi
+          echo "Bootstrap finished $(date -Is)"
+      Tags:
+        - { Key: Name, Value: mshasha-web }
+        - { Key: Project, Value: mshasha }
+
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    # Keep the public IP that DNS points at
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref Instance
+      Tags:
+        - { Key: Name, Value: mshasha-web }
+        - { Key: Project, Value: mshasha }
+
+  ApexRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: HasDns
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      TTL: '300'
+      ResourceRecords: [!Ref ElasticIp]
+
+  WwwRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: HasDns
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'www.${DomainName}'
+      Type: A
+      TTL: '300'
+      ResourceRecords: [!Ref ElasticIp]
+
+Outputs:
+  PublicIp:
+    Description: Elastic IP of the web server
+    Value: !Ref ElasticIp
+  InstanceId:
+    Description: Connect with - aws ssm start-session --target <InstanceId>
+    Value: !Ref Instance
+  SiteUrl:
+    Description: Public URL of the site
+    Value: !If [HasDns, !Sub 'https://${DomainName}', !Sub 'http://${ElasticIp}']

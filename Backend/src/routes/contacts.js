@@ -1,32 +1,38 @@
 import express from 'express';
-import { db } from '../firebase.js';
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, orderBy } from "firebase/firestore";
+import { supabase } from '../supabase.js';
+import { requireAdmin } from '../auth.js';
 import asyncHandler from '../middleware/asyncHandler.js';
-import { handleFirestoreError } from '../middleware/errorHandler.js';
+import { handleDatabaseError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
+const toContact = (row) => ({
+  id: row.id,
+  name: row.name,
+  email: row.email,
+  phone: row.phone,
+  service: row.service,
+  message: row.message,
+  status: row.status,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
 // Get all contact messages
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   try {
-    const contactsRef = collection(db, 'contacts');
-    const q = query(contactsRef, orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    const contacts = [];
-    
-    snapshot.forEach((doc) => {
-      contacts.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-    
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
     res.json({
       success: true,
-      data: contacts
+      data: data.map(toContact)
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
@@ -34,14 +40,14 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/', asyncHandler(async (req, res) => {
   try {
     const { name, email, phone, service, message } = req.body;
-    
+
     if (!name || !email || !message) {
       return res.status(400).json({
         success: false,
         message: 'Name, email, and message are required'
       });
     }
-    
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -50,74 +56,73 @@ router.post('/', asyncHandler(async (req, res) => {
         message: 'Invalid email format'
       });
     }
-    
-    const contactData = {
-      name,
-      email,
-      phone: phone || '',
-      service: service || '',
-      message,
-      status: 'unread',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    const contactsRef = collection(db, 'contacts');
-    const docRef = await addDoc(contactsRef, contactData);
-    
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .insert({
+        name,
+        email,
+        phone: phone || '',
+        service: service || '',
+        message,
+        status: 'unread'
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
     res.status(201).json({
       success: true,
       message: 'Message sent successfully! We will get back to you soon.',
-      data: {
-        id: docRef.id,
-        ...contactData
-      }
+      data: toContact(data)
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
 // Update contact status (mark as read/unread)
-router.patch('/:id/status', asyncHandler(async (req, res) => {
+router.patch('/:id/status', requireAdmin, asyncHandler(async (req, res) => {
   try {
     const contactId = req.params.id;
     const { status } = req.body;
-    
+
     if (!status || !['read', 'unread'].includes(status)) {
       return res.status(400).json({
         success: false,
         message: 'Valid status is required (read or unread)'
       });
     }
-    
-    await updateDoc(doc(db, 'contacts', contactId), {
-      status,
-      updatedAt: new Date().toISOString()
-    });
-    
+
+    const { error } = await supabase
+      .from('contacts')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', contactId);
+    if (error) throw error;
+
     res.json({
       success: true,
       message: 'Contact status updated successfully'
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 
 // Delete contact message
-router.delete('/:id', asyncHandler(async (req, res) => {
+router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
   try {
     const contactId = req.params.id;
-    
-    await deleteDoc(doc(db, 'contacts', contactId));
-    
+
+    const { error } = await supabase.from('contacts').delete().eq('id', contactId);
+    if (error) throw error;
+
     res.json({
       success: true,
       message: 'Contact message deleted successfully'
     });
   } catch (error) {
-    handleFirestoreError(error, res);
+    handleDatabaseError(error, res);
   }
 }));
 

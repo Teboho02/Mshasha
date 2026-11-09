@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM role and instance profile for the Mshasha backend on EC2 - portfolio media in S3, deploy bundle and .env download, and Session Manager access
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: mshasha
+    Description: Name of the existing S3 bucket that stores portfolio media
+
+  MediaPrefix:
+    Type: String
+    Default: portfolio
+    AllowedPattern: '^[a-z0-9-]+$'
+    Description: Key prefix the backend writes media under (no slashes)
+
+  DeployPrefix:
+    Type: String
+    Default: deploy
+    AllowedPattern: '^[a-z0-9-]+$'
+    Description: Private key prefix holding the application bundle and .env the instance downloads (no slashes)
+
+Resources:
+  BackendRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Assumed by the Mshasha backend EC2 instance to manage portfolio media in S3
+      ManagedPolicyArns:
+        # Shell access through SSM Session Manager, no open SSH port required
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PortfolioMediaAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManagePortfolioMedia
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${BucketName}/${MediaPrefix}/*'
+              - Sid: ListPortfolioMedia
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${BucketName}'
+                Condition:
+                  StringLike:
+                    s3:prefix: !Sub '${MediaPrefix}/*'
+        - PolicyName: DeployAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: DownloadDeployFiles
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${BucketName}/${DeployPrefix}/*'
+      Tags:
+        - Key: Project
+          Value: mshasha
+
+  BackendInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref BackendRole
+
+Outputs:
+  RoleArn:
+    Description: ARN of the backend role
+    Value: !GetAtt BackendRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleArn'
+
+  InstanceProfileName:
+    Description: Instance profile to attach to the Mshasha backend EC2 instance
+    Value: !Ref BackendInstanceProfile
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceProfileName'
+
+  InstanceProfileArn:
+    Description: ARN of the instance profile
+    Value: !GetAtt BackendInstanceProfile.Arn

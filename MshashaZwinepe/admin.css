@@ -650,3 +650,84 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Admin login */
+        body.logged-out .container {
+            display: none;
+        }
+
+        .login-screen {
+            display: none;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        body.logged-out .login-screen {
+            display: flex;
+        }
+
+        .login-panel {
+            width: 100%;
+            max-width: 440px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 50px 40px;
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .login-panel h1 {
+            font-size: 2rem;
+            font-weight: 100;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .login-panel p {
+            opacity: 0.7;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-error {
+            min-height: 1.2em;
+            margin-top: 20px;
+            color: #e74c3c;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--light);
+            padding: 10px 24px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: none;
+            transition: border-color 0.3s ease, color 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        @media (max-width: 768px) {
+            .login-panel {
+                padding: 40px 20px;
+            }
+        }

@@ -1,6 +1,6 @@
-// Helper function to handle Firestore errors
-const handleFirestoreError = (error, res) => {
-  console.error('Firestore error:', error);
+// Helper function to handle database errors
+const handleDatabaseError = (error, res) => {
+  console.error('Database error:', error);
   res.status(500).json({ 
     success: false, 
     message: 'Database operation failed', 
@@ -26,4 +26,4 @@ const notFoundHandler = (req, res, next) => {
   });
 };
 
-export { handleFirestoreError, globalErrorHandler, notFoundHandler };
+export { handleDatabaseError, globalErrorHandler, notFoundHandler };
