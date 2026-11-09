@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { supabase, isInvalidId } from '../supabase.js';
-import { uploadObject } from '../s3.js';
+import { storeMedia } from '../media.js';
 import { requireAdmin } from '../auth.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import { handleDatabaseError } from '../middleware/errorHandler.js';
@@ -98,36 +98,20 @@ router.post('/upload', requireAdmin, upload.array('media', 10), handleMulterErro
       });
     }
 
-    const uploadPromises = req.files.map(async (file) => {
+    // One file at a time so resizing several large photos can't exhaust the server's memory
+    const uploadResults = [];
+    for (const file of req.files) {
       try {
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 15);
-        const fileExtension = file.originalname.split('.').pop();
-        const mediaType = file.mimetype.startsWith('image/') ? 'images' : 'videos';
-        const filename = `portfolio/${mediaType}/${timestamp}_${randomString}.${fileExtension}`;
-        
-        const downloadURL = await uploadObject(filename, file.buffer, file.mimetype);
-
-        return {
-          success: true,
-          originalName: file.originalname,
-          filename: filename,
-          url: downloadURL,
-          size: file.size,
-          contentType: file.mimetype,
-          mediaType: mediaType,
-          uploadedAt: new Date().toISOString()
-        };
+        uploadResults.push({ success: true, ...(await storeMedia(file)) });
       } catch (fileError) {
-        return {
+        uploadResults.push({
           success: false,
           originalName: file.originalname,
           error: fileError.message
-        };
+        });
       }
-    });
+    }
 
-    const uploadResults = await Promise.all(uploadPromises);
     const successfulUploads = uploadResults.filter(result => result.success);
     const failedUploads = uploadResults.filter(result => !result.success);
 
@@ -171,24 +155,7 @@ router.post('/upload-single', requireAdmin, upload.single('media'), handleMulter
       });
     }
 
-    const file = req.file;
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const fileExtension = file.originalname.split('.').pop();
-    const mediaType = file.mimetype.startsWith('image/') ? 'images' : 'videos';
-    const filename = `portfolio/${mediaType}/${timestamp}_${randomString}.${fileExtension}`;
-    
-    const downloadURL = await uploadObject(filename, file.buffer, file.mimetype);
-    
-    const uploadResult = {
-      originalName: file.originalname,
-      filename: filename,
-      url: downloadURL,
-      size: file.size,
-      contentType: file.mimetype,
-      mediaType: mediaType,
-      uploadedAt: new Date().toISOString()
-    };
+    const uploadResult = await storeMedia(req.file);
 
     res.json({
       success: true,
