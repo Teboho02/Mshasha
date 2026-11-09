@@ -18,7 +18,7 @@ Parameters:
 
   Recipients:
     Type: CommaDelimitedList
-    Default: bookings@mshashazwinepe.co.za,info@mshashazwinepe.co.za
+    Default: bookings@mshashazwinepe.co.za,info@mshashazwinepe.co.za,mshasha@mshashazwinepe.co.za
     Description: Addresses on the domain that accept mail; anything else is rejected
 
   ForwardTo:
