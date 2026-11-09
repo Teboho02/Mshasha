@@ -357,7 +357,7 @@ const WHATSAPP_NUMBER = '27739233855';
 
 // Open WhatsApp with pre-filled message
 function openWhatsApp() {
-  const message = encodeURIComponent('Hi Mshasha, I would like to inquire about your photography services.');
+  const message = encodeURIComponent('Hi Mshasha, I would like to inquire about your services.');
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
   window.open(whatsappUrl, '_blank');
 }

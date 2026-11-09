@@ -72,11 +72,12 @@ if (fs.existsSync(FRONTEND_PATH)) {
     etag: true,
     lastModified: true,
     setHeaders: (res, filePath) => {
-      // Don't cache HTML files
       if (path.extname(filePath) === '.html') {
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
+        // Always revalidate HTML (cheap 304 via ETag) so new deploys show up immediately
+        res.setHeader('Cache-Control', 'no-cache');
+      } else if (NODE_ENV === 'production' && filePath.includes(`${path.sep}assets${path.sep}`)) {
+        // Vite build output has content-hashed file names, so it can be cached forever
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }
     }
   }));

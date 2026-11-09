@@ -20,7 +20,7 @@ const footerHTML = `
     <div class="footer-section">
       <h4>Contact</h4>
       <p>📞 +27 73 923 3855</p>
-      <p>📧 mshasha@photography.co.za</p>
+      <p>📧 mshasha@mshashazwinepe.co.za</p>
       <p>📍 Germiston, Gauteng</p>
     </div>
     

@@ -6,13 +6,15 @@ const S3_BUCKET = process.env.S3_BUCKET || 'mshasha';
 // Uses the default credential chain (env vars, `aws login` session, IAM role)
 const s3 = new S3Client({ region: AWS_REGION });
 
-// Upload a buffer and return its public URL (portfolio/* is public-read via bucket policy)
+// Upload a buffer and return its public URL (portfolio/* is public-read via bucket policy).
+// Keys are unique per upload and never overwritten, so browsers may cache them indefinitely.
 const uploadObject = async (key, body, contentType) => {
   await s3.send(new PutObjectCommand({
     Bucket: S3_BUCKET,
     Key: key,
     Body: body,
-    ContentType: contentType
+    ContentType: contentType,
+    CacheControl: 'public, max-age=31536000, immutable'
   }));
 
   return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
