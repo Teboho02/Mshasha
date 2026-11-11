@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "hash-password": "node scripts/hash-password.js",
+    "smtp-password": "node scripts/smtp-password.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Teboho02",
